@@ -67,7 +67,11 @@ export function AudioSyncBridge() {
     }
 
     if (isPlaying) {
-      void playAudio().catch(() => {
+      void playAudio().catch((error) => {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return
+        }
+
         pause()
       })
       return

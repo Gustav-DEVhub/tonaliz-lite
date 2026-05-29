@@ -1,7 +1,5 @@
-import { Pause, Play } from 'lucide-react'
 import type { Playlist, Track } from '@/entities/track/model/types'
-import { formatDuration } from '@/shared/lib/utils'
-import { cn } from '@/shared/lib/utils'
+import { QueueTrackRow } from '@/features/player/components/queue-track-row'
 import { Badge } from '@/shared/ui/badge'
 
 interface UpNextListProps {
@@ -10,6 +8,11 @@ interface UpNextListProps {
   currentTrackId: string
   isPlaying: boolean
   onSelectTrack: (track: Track) => void
+  onToggleCurrent: () => void
+  onRemoveFromQueue: (index: number) => void
+  onToggleFavorite: (track: Track) => void
+  onGoToArtist: (track: Track) => void
+  onShareTrack: (track: Track) => void
 }
 
 export function UpNextList({
@@ -18,6 +21,11 @@ export function UpNextList({
   currentTrackId,
   isPlaying,
   onSelectTrack,
+  onToggleCurrent,
+  onRemoveFromQueue,
+  onToggleFavorite,
+  onGoToArtist,
+  onShareTrack,
 }: UpNextListProps) {
   if (!queue || queue.tracks.length <= 1) {
     return (
@@ -30,6 +38,8 @@ export function UpNextList({
       </section>
     )
   }
+
+  const visibleTracks = queue.tracks.slice(queueIndex)
 
   return (
     <section className="editorial-panel rounded-[1.8rem] px-5 py-5 sm:px-6">
@@ -44,40 +54,30 @@ export function UpNextList({
       </div>
 
       <div className="mt-5 space-y-3">
-        {queue.tracks.map((track, index) => {
+        {visibleTracks.map((track, offset) => {
+          const index = queueIndex + offset
           const isCurrent = track.id === currentTrackId
 
           return (
-            <button
+            <QueueTrackRow
               key={`${queue.id}-${track.id}-${index}`}
-              type="button"
-              onClick={() => {
+              track={track}
+              isCurrent={isCurrent}
+              isPlaying={isCurrent && isPlaying}
+              canRemove={!isCurrent}
+              onPlay={() => {
+                if (isCurrent) {
+                  onToggleCurrent()
+                  return
+                }
+
                 onSelectTrack(track)
               }}
-              className={cn(
-                'flex w-full items-center gap-3 rounded-[1.4rem] border px-3 py-3 text-left transition-colors',
-                isCurrent
-                  ? 'border-white/14 bg-white/6'
-                  : 'border-transparent bg-black/10 hover:border-white/10 hover:bg-white/5',
-              )}
-            >
-              <img src={track.imageUrl} alt={`${track.name} artwork`} className="size-12 rounded-[0.9rem] object-cover" />
-
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="line-clamp-1 font-medium text-text-primary">{track.name}</p>
-                  {isCurrent ? <Badge>{isPlaying ? 'Playing' : 'Paused'}</Badge> : null}
-                </div>
-                <p className="mt-1 line-clamp-1 text-sm text-text-secondary">{track.artistName}</p>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <span className="hidden text-sm text-text-muted sm:block">{formatDuration(track.duration)}</span>
-                <span className="inline-flex size-10 items-center justify-center rounded-full border border-border-subtle text-text-secondary">
-                  {isCurrent && isPlaying ? <Pause className="size-4" /> : <Play className="ml-0.5 size-4" />}
-                </span>
-              </div>
-            </button>
+              onRemove={() => onRemoveFromQueue(index)}
+              onFavorite={() => onToggleFavorite(track)}
+              onGoToArtist={() => onGoToArtist(track)}
+              onShare={() => onShareTrack(track)}
+            />
           )
         })}
       </div>

@@ -5,33 +5,51 @@ import type { JamendoArtistResponse, JamendoArtistSearchResponse } from '@/lib/j
 const jamendoArtistsUrl = 'https://api.jamendo.com/v3.0/artists/'
 const artistProfileCache = new Map<string, ArtistProfile | null>()
 
-function buildArtistProfileFallback(track: Track): ArtistProfile | null {
-  if (!track.artistName.trim()) {
+interface ArtistLookupInput {
+  artistId?: string
+  artistName: string
+  artistShareUrl?: string
+  artistWebsite?: string | null
+  artistImageUrl?: string | null
+}
+
+function buildArtistProfileFallback(input: ArtistLookupInput): ArtistProfile | null {
+  if (!input.artistName.trim()) {
     return null
   }
 
-  const id = track.artistId ?? `artist-${track.artistName.toLowerCase().replace(/\s+/g, '-')}`
-  const shareUrl = track.artistShareUrl ?? (track.artistId ? `https://www.jamendo.com/artist/${track.artistId}` : null)
+  const id = input.artistId ?? `artist-${input.artistName.toLowerCase().replace(/\s+/g, '-')}`
+  const shareUrl = input.artistShareUrl ?? (input.artistId ? `https://www.jamendo.com/artist/${input.artistId}` : null)
 
   return {
     id,
-    name: track.artistName,
-    imageUrl: track.artistImageUrl ?? null,
+    name: input.artistName,
+    imageUrl: input.artistImageUrl ?? null,
     shareUrl,
-    website: track.artistWebsite ?? null,
+    website: input.artistWebsite ?? null,
   }
 }
 
 export async function getArtistProfile(track: Track): Promise<ArtistProfile | null> {
-  const cacheKey = track.artistId ? `id:${track.artistId}` : `name:${track.artistName.toLowerCase()}`
+  return getArtistProfileByIdentity({
+    artistId: track.artistId,
+    artistName: track.artistName,
+    artistShareUrl: track.artistShareUrl,
+    artistWebsite: track.artistWebsite,
+    artistImageUrl: track.artistImageUrl,
+  })
+}
+
+export async function getArtistProfileByIdentity(input: ArtistLookupInput): Promise<ArtistProfile | null> {
+  const cacheKey = input.artistId ? `id:${input.artistId}` : `name:${input.artistName.toLowerCase()}`
 
   if (artistProfileCache.has(cacheKey)) {
     return artistProfileCache.get(cacheKey) ?? null
   }
 
-  const fallback = buildArtistProfileFallback(track)
+  const fallback = buildArtistProfileFallback(input)
 
-  if (!track.artistId && !track.artistName.trim()) {
+  if (!input.artistId && !input.artistName.trim()) {
     artistProfileCache.set(cacheKey, fallback)
     return fallback
   }
@@ -44,10 +62,10 @@ export async function getArtistProfile(track: Track): Promise<ArtistProfile | nu
     url.searchParams.set('format', 'json')
     url.searchParams.set('limit', '1')
 
-    if (track.artistId) {
-      url.searchParams.set('id', track.artistId)
+    if (input.artistId) {
+      url.searchParams.set('id', input.artistId)
     } else {
-      url.searchParams.set('namesearch', track.artistName)
+      url.searchParams.set('namesearch', input.artistName)
     }
 
     const response = await fetch(url, {

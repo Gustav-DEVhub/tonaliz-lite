@@ -1,5 +1,4 @@
-import { TrackCard } from '@/entities/track/ui/track-card'
-import { createPlaylist } from '@/entities/track/lib/create-playlist'
+import { TrackListRow } from '@/entities/track/ui/track-list-row'
 import { useFavoritesStore } from '@/features/library/store/use-favorites-store'
 import { usePlayerStore } from '@/features/player/store/use-player-store'
 import { EmptyState } from '@/shared/ui/empty-state'
@@ -15,14 +14,12 @@ export function LibraryPage() {
 
   const currentTrack = usePlayerStore((state) => state.currentTrack)
   const isPlaying = usePlayerStore((state) => state.isPlaying)
-  const playTrack = usePlayerStore((state) => state.playTrack)
+  const playSingleTrack = usePlayerStore((state) => state.playSingleTrack)
   const togglePlay = usePlayerStore((state) => state.togglePlay)
-  const queue = usePlayerStore((state) => state.queue)
-
-  const libraryPlaylist = createPlaylist('Saved favorites', 'library', favorites)
-
+  const playNextInQueue = usePlayerStore((state) => state.playNextInQueue)
+  const addToQueue = usePlayerStore((state) => state.addToQueue)
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:flex lg:min-h-full lg:flex-col lg:space-y-5">
       <section className="editorial-panel rounded-[2rem] px-6 py-8 sm:px-8">
         <p className="font-mono text-xs uppercase tracking-[0.28em] text-text-muted">Library</p>
         <h1 className="mt-3 font-heading text-4xl text-text-primary">Your saved favorites</h1>
@@ -32,52 +29,65 @@ export function LibraryPage() {
         </p>
       </section>
 
-      {!isOnline ? (
-        <StatusPanel
-          title="Offline library ready"
-          message="Your saved track metadata is still available locally. Playback depends on the remote audio remaining reachable."
-        />
-      ) : null}
+      <div className="space-y-4">
+        {!isOnline ? (
+          <StatusPanel
+            title="Offline library ready"
+            message="Your saved track metadata is still available locally. Playback depends on the remote audio remaining reachable."
+          />
+        ) : null}
 
-      {error ? <StatusPanel title="Library sync issue" message={error} /> : null}
+        {error ? <StatusPanel title="Library sync issue" message={error} /> : null}
 
-      {isHydrating ? <TrackGridSkeleton /> : null}
+        {isHydrating ? <TrackGridSkeleton /> : null}
 
-      {!isHydrating && favorites.length === 0 ? (
-        <EmptyState
-          title="No favorites yet"
-          description="Save tracks from Discover and they will appear here instantly, persisted locally for your next visit."
-        />
-      ) : null}
+        {!isHydrating && favorites.length === 0 ? (
+          <EmptyState
+            title="No favorites yet"
+            description="Save tracks from Discover and they will appear here instantly, persisted locally for your next visit."
+          />
+        ) : null}
 
-      {!isHydrating && favorites.length > 0 ? (
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-          {favorites.map((track) => {
-            const isCurrent = currentTrack?.id === track.id
+        {!isHydrating && favorites.length > 0 ? (
+          <div className="space-y-3">
+            {favorites.map((track) => {
+              const isCurrent = currentTrack?.id === track.id
 
-            return (
-              <TrackCard
-                key={track.id}
-                track={track}
-                isCurrent={isCurrent}
-                isPlaying={isCurrent && isPlaying}
-                isFavorite
-                onPlay={() => {
-                  if (isCurrent && queue?.id === libraryPlaylist.id) {
-                    togglePlay()
-                    return
+              return (
+                <TrackListRow
+                  key={track.id}
+                  track={track}
+                  isCurrent={isCurrent}
+                  isPlaying={isCurrent && isPlaying}
+                  isFavorite
+                  onPlay={() => {
+                    if (isCurrent) {
+                      togglePlay()
+                      return
+                    }
+
+                    playSingleTrack(track)
+                  }}
+                  onToggleFavorite={() => {
+                    void removeFavoriteTrack(track.id)
+                  }}
+                  onPlayNext={playNextInQueue}
+                  onAddToQueue={addToQueue}
+                  shareContext={
+                    typeof window !== 'undefined'
+                      ? {
+                          label: 'library link',
+                          title: 'Saved favorites on Tonaliz Lite',
+                          url: `${window.location.origin}/library`,
+                        }
+                      : null
                   }
-
-                  playTrack(track, libraryPlaylist)
-                }}
-                onToggleFavorite={() => {
-                  void removeFavoriteTrack(track.id)
-                }}
-              />
-            )
-          })}
-        </div>
-      ) : null}
+                />
+              )
+            })}
+          </div>
+        ) : null}
+      </div>
     </div>
   )
 }

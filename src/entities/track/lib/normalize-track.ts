@@ -62,6 +62,7 @@ export function normalizeTrack(rawTrack: JamendoTrackResponse): Track | null {
     name,
     artistName,
     artistId,
+    shareUrl: rawTrack.shareurl?.trim() || rawTrack.shorturl?.trim() || null,
     audioUrl,
     imageUrl:
       rawTrack.album_image?.trim() ||
@@ -69,7 +70,7 @@ export function normalizeTrack(rawTrack: JamendoTrackResponse): Track | null {
       rawTrack.thumbnail?.trim() ||
       fallbackArtwork,
     artistImageUrl: null,
-    artistShareUrl: undefined,
+    artistShareUrl: artistId ? `https://www.jamendo.com/artist/${artistId}` : undefined,
     artistWebsite: null,
     duration: Number.isFinite(Number(rawTrack.duration)) ? Number(rawTrack.duration) : 0,
     tags,

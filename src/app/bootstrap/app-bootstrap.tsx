@@ -1,5 +1,6 @@
 import { useEffect, useEffectEvent } from 'react'
 import { AudioSyncBridge } from '@/app/bootstrap/audio-sync-bridge'
+import { RecentlyPlayedBridge } from '@/app/bootstrap/recently-played-bridge'
 import { useFavoritesStore } from '@/features/library/store/use-favorites-store'
 import { usePlayerStore } from '@/features/player/store/use-player-store'
 
@@ -24,5 +25,10 @@ export function AppBootstrap() {
     }
   }, [loadFavorites])
 
-  return <AudioSyncBridge />
+  return (
+    <>
+      <AudioSyncBridge />
+      <RecentlyPlayedBridge />
+    </>
+  )
 }

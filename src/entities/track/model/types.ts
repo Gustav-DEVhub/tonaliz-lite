@@ -1,12 +1,13 @@
 export type Mood = 'calm' | 'energetic' | 'upbeat' | 'melancholic' | 'neutral'
 
-export type PlaylistSource = 'discover' | 'library'
+export type PlaylistSource = 'home' | 'discover' | 'library' | 'artist'
 
 export interface Track {
   id: string
   name: string
   artistName: string
   artistId?: string
+  shareUrl?: string | null
   artistShareUrl?: string
   artistWebsite?: string | null
   artistImageUrl?: string | null

@@ -1,4 +1,5 @@
-import { Heart, Pause, Play, Repeat, Shuffle, StepBack, StepForward } from 'lucide-react'
+import { Heart, PanelRightClose, PanelRightOpen, Pause, Play, Repeat, Shuffle, StepBack, StepForward } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { DesktopVolumeControl } from '@/features/player/components/desktop-volume-control'
 import { useFavoritesStore } from '@/features/library/store/use-favorites-store'
 import { usePlayerStore } from '@/features/player/store/use-player-store'
@@ -9,6 +10,8 @@ import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 
 export function BottomPlayer() {
+  const navigate = useNavigate()
+  const location = useLocation()
   const currentTrack = usePlayerStore((state) => state.currentTrack)
   const isPlaying = usePlayerStore((state) => state.isPlaying)
   const currentTime = usePlayerStore((state) => state.currentTime)
@@ -18,27 +21,35 @@ export function BottomPlayer() {
   const queue = usePlayerStore((state) => state.queue)
   const queueIndex = usePlayerStore((state) => state.queueIndex)
   const currentMood = usePlayerStore((state) => state.currentMood)
+  const desktopRightRailMode = usePlayerStore((state) => state.desktopRightRailMode)
   const togglePlay = usePlayerStore((state) => state.togglePlay)
   const nextTrack = usePlayerStore((state) => state.nextTrack)
   const previousTrack = usePlayerStore((state) => state.previousTrack)
   const seekTo = usePlayerStore((state) => state.seekTo)
   const toggleShuffle = usePlayerStore((state) => state.toggleShuffle)
   const cycleRepeatMode = usePlayerStore((state) => state.cycleRepeatMode)
+  const toggleQueueRail = usePlayerStore((state) => state.toggleQueueRail)
 
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite)
   const isFavorite = useFavoritesStore((state) => state.isFavorite)
 
   const moodToken = moodTheme[currentMood]
   const hasNextTrack =
-    Boolean(queue?.tracks[queueIndex + 1]) ||
-    Boolean(isShuffleEnabled && queue && queue.tracks.length > 1) ||
-    repeatMode === 'all'
+    Boolean(queue?.tracks[queueIndex + 1]) || Boolean((isShuffleEnabled || repeatMode === 'all') && queue && queue.tracks.length > 1)
   const hasPreviousTrack = Boolean(queue?.tracks[queueIndex - 1]) || repeatMode === 'all'
   const resolvedDuration = duration || currentTrack?.duration || 0
 
   const handleSeek = (nextTime: number) => {
     seekAudio(nextTime)
     seekTo(nextTime)
+  }
+
+  const handleMobileQueue = () => {
+    navigate('/now-playing', {
+      state: {
+        from: `${location.pathname}${location.search}${location.hash}`,
+      },
+    })
   }
 
   const progressSlider = (
@@ -62,8 +73,8 @@ export function BottomPlayer() {
       : 'border border-border-subtle'
 
   return (
-    <div className="fixed inset-x-0 bottom-16 z-40 px-3 pb-3 md:bottom-0 md:px-4">
-      <div className="editorial-panel mood-glow mx-auto max-w-7xl overflow-hidden rounded-[1.45rem] border-white/8 px-3 py-3 sm:px-4 sm:py-4">
+    <div className="fixed inset-x-0 bottom-16 z-40 px-3 pb-3 md:bottom-0 md:px-4 lg:px-6 xl:px-8 2xl:px-10">
+      <div className="editorial-panel mood-glow w-full overflow-hidden rounded-[1.45rem] border-white/8 px-3 py-3 sm:px-4 sm:py-4">
         <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,var(--mood-accent),transparent)]" />
 
         {!currentTrack ? (
@@ -110,18 +121,28 @@ export function BottomPlayer() {
                   </h2>
                   <p className="mt-0.5 line-clamp-1 text-sm text-text-secondary">{currentTrack.artistName}</p>
                 </div>
-                <button
-                  type="button"
-                  className="rounded-full border border-border-subtle p-2 text-text-secondary transition-colors hover:text-text-primary"
-                  onClick={() => {
-                    void toggleFavorite(currentTrack)
-                  }}
-                  aria-label={isFavorite(currentTrack.id) ? 'Remove favorite' : 'Add favorite'}
-                >
-                  <Heart
-                    className={isFavorite(currentTrack.id) ? 'size-4 fill-current text-primary-soft' : 'size-4'}
-                  />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="rounded-full border border-border-subtle p-2 text-text-secondary transition-colors hover:text-text-primary"
+                    onClick={handleMobileQueue}
+                    aria-label="Open queue"
+                  >
+                    <PanelRightOpen className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-full border border-border-subtle p-2 text-text-secondary transition-colors hover:text-text-primary"
+                    onClick={() => {
+                      void toggleFavorite(currentTrack)
+                    }}
+                    aria-label={isFavorite(currentTrack.id) ? 'Remove favorite' : 'Add favorite'}
+                  >
+                    <Heart
+                      className={isFavorite(currentTrack.id) ? 'size-4 fill-current text-primary-soft' : 'size-4'}
+                    />
+                  </button>
+                </div>
               </div>
 
               <div className="-mt-1 flex items-center justify-center gap-2">
@@ -173,11 +194,7 @@ export function BottomPlayer() {
                   <h2 className="mt-2 line-clamp-1 font-heading text-xl leading-tight text-text-primary">
                     {currentTrack.name}
                   </h2>
-                  <div className="mt-1 flex items-center gap-2 text-sm text-text-secondary">
-                    <span className="line-clamp-1">{currentTrack.artistName}</span>
-                    <span className="text-text-muted">/</span>
-                    <span className="truncate">{currentTrack.genre ?? 'independent release'}</span>
-                  </div>
+                  <p className="mt-1 line-clamp-1 text-sm text-text-secondary">{currentTrack.artistName}</p>
                 </div>
               </div>
 
@@ -250,14 +267,25 @@ export function BottomPlayer() {
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="hidden text-right lg:block">
-                  <p className="text-xs text-text-muted">
-                    Track {queueIndex + 1}
-                    {queue ? ` / ${queue.tracks.length}` : ''}
-                  </p>
-                  <p className="mt-1 text-xs text-text-secondary">{formatDuration(resolvedDuration)}</p>
-                </div>
-
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className={
+                    desktopRightRailMode === 'queue'
+                      ? 'border border-[color:var(--mood-accent)]/40 bg-[color:var(--mood-accent)]/12 text-text-primary'
+                      : 'border border-border-subtle'
+                  }
+                  onClick={toggleQueueRail}
+                  aria-pressed={desktopRightRailMode === 'queue'}
+                  aria-label={desktopRightRailMode === 'queue' ? 'Close queue' : 'Open queue'}
+                >
+                  {desktopRightRailMode === 'queue' ? (
+                    <PanelRightClose className="size-4" />
+                  ) : (
+                    <PanelRightOpen className="size-4" />
+                  )}
+                </Button>
                 <Button
                   type="button"
                   size="icon"

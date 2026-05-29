@@ -5,6 +5,8 @@ export interface JamendoTrackResponse {
   artist_id?: string | number
   artist_name?: string
   audio?: string
+  shorturl?: string
+  shareurl?: string
   image?: string
   album_image?: string
   thumbnail?: string

@@ -10,8 +10,16 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'icons.svg'],
+      includeAssets: [
+        'favicon.svg',
+        'pwa-192x192.png',
+        'pwa-512x512.png',
+        'pwa-screenshot-wide.png',
+        'pwa-screenshot-mobile.png',
+        'icons.svg',
+      ],
       manifest: {
+        id: '/',
         name: 'Tonaliz Lite',
         short_name: 'Tonaliz',
         description:
@@ -23,9 +31,29 @@ export default defineConfig({
         scope: '/',
         icons: [
           {
-            src: '/favicon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
+            src: '/pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+          },
+          {
+            src: '/pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+          },
+        ],
+        screenshots: [
+          {
+            src: '/pwa-screenshot-wide.png',
+            sizes: '1440x1024',
+            type: 'image/png',
+            form_factor: 'wide',
+            label: 'Tonaliz Lite desktop discovery view',
+          },
+          {
+            src: '/pwa-screenshot-mobile.png',
+            sizes: '390x844',
+            type: 'image/png',
+            label: 'Tonaliz Lite mobile discovery view',
           },
         ],
       },

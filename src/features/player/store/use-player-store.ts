@@ -8,6 +8,7 @@ interface SetTrackOptions {
 }
 
 export type RepeatMode = 'off' | 'all' | 'one'
+export type DesktopRightRailMode = 'closed' | 'now_playing' | 'queue'
 
 interface PlayerState {
   currentTrack: Track | null
@@ -22,9 +23,11 @@ interface PlayerState {
   repeatMode: RepeatMode
   currentMood: Mood
   isOnline: boolean
-  isNowPlayingPanelOpen: boolean
+  desktopRightRailMode: DesktopRightRailMode
+  lastNonQueueRailMode: Exclude<DesktopRightRailMode, 'queue'>
   setTrack: (track: Track, options?: SetTrackOptions) => void
   playTrack: (track: Track, queue?: Playlist | null) => void
+  playSingleTrack: (track: Track) => void
   play: () => void
   pause: () => void
   togglePlay: () => void
@@ -38,9 +41,16 @@ interface PlayerState {
   setVolume: (volume: number) => void
   toggleShuffle: () => void
   cycleRepeatMode: () => void
-  openNowPlayingPanel: () => void
-  closeNowPlayingPanel: () => void
-  toggleNowPlayingPanel: () => void
+  addToQueue: (track: Track) => void
+  playNextInQueue: (track: Track) => void
+  removeFromQueueAt: (index: number) => void
+  clearUpcomingQueue: () => void
+  openNowPlayingRail: () => void
+  closeDesktopRail: () => void
+  toggleNowPlayingRail: () => void
+  openQueueRail: () => void
+  closeQueueRailAndRestore: () => void
+  toggleQueueRail: () => void
   handlePlaybackCompletion: () => void
 }
 
@@ -68,6 +78,16 @@ function getRandomQueueIndex(length: number, currentIndex: number): number {
   return nextIndex
 }
 
+function createQueueFromTracks(baseTrack: Track, tracks: Track[], source: Playlist['source'] = 'discover'): Playlist {
+  return {
+    id: `${source}-session-${tracks.map((track) => track.id).join('-')}`,
+    title: baseTrack.name,
+    source,
+    trackIds: tracks.map((track) => track.id),
+    tracks,
+  }
+}
+
 export const usePlayerStore = create<PlayerState>((set, get) => ({
   currentTrack: null,
   queue: null,
@@ -81,7 +101,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   repeatMode: 'off',
   currentMood: 'neutral',
   isOnline: true,
-  isNowPlayingPanelOpen: true,
+  desktopRightRailMode: 'now_playing',
+  lastNonQueueRailMode: 'now_playing',
   setTrack: (track, options) =>
     set((state) => {
       const queue = options?.queue ?? state.queue ?? createSingleTrackQueue(track)
@@ -100,6 +121,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }),
   playTrack: (track, queue) => {
     get().setTrack(track, { queue, autoPlay: true })
+  },
+  playSingleTrack: (track) => {
+    get().setTrack(track, { queue: createSingleTrackQueue(track), autoPlay: true })
   },
   play: () =>
     set((state) => ({
@@ -204,12 +228,148 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     set((state) => ({
       repeatMode: state.repeatMode === 'off' ? 'all' : state.repeatMode === 'all' ? 'one' : 'off',
     })),
-  openNowPlayingPanel: () => set({ isNowPlayingPanelOpen: true }),
-  closeNowPlayingPanel: () => set({ isNowPlayingPanelOpen: false }),
-  toggleNowPlayingPanel: () =>
+  addToQueue: (track) =>
+    set((state) => {
+      if (!state.currentTrack) {
+        return {
+          currentTrack: track,
+          queue: createSingleTrackQueue(track),
+          queueIndex: 0,
+          isPlaying: false,
+          progress: 0,
+          currentTime: 0,
+          duration: track.duration,
+          currentMood: detectMood(track),
+        }
+      }
+
+      if (!state.queue) {
+        const queue = createQueueFromTracks(state.currentTrack, [state.currentTrack, track])
+
+        return {
+          queue,
+          queueIndex: 0,
+        }
+      }
+
+      const nextTracks = [...state.queue.tracks, track]
+
+      return {
+        queue: {
+          ...state.queue,
+          trackIds: nextTracks.map((entry) => entry.id),
+          tracks: nextTracks,
+        },
+      }
+    }),
+  playNextInQueue: (track) =>
+    set((state) => {
+      if (!state.currentTrack) {
+        return {
+          currentTrack: track,
+          queue: createSingleTrackQueue(track),
+          queueIndex: 0,
+          isPlaying: true,
+          progress: 0,
+          currentTime: 0,
+          duration: track.duration,
+          currentMood: detectMood(track),
+        }
+      }
+
+      if (!state.queue) {
+        const queue = createQueueFromTracks(state.currentTrack, [state.currentTrack, track])
+
+        return {
+          queue,
+          queueIndex: 0,
+        }
+      }
+
+      const insertionIndex = Math.min(state.queueIndex + 1, state.queue.tracks.length)
+      const nextTracks = [...state.queue.tracks]
+      nextTracks.splice(insertionIndex, 0, track)
+
+      return {
+        queue: {
+          ...state.queue,
+          trackIds: nextTracks.map((entry) => entry.id),
+          tracks: nextTracks,
+        },
+      }
+    }),
+  openNowPlayingRail: () =>
+    set({
+      desktopRightRailMode: 'now_playing',
+      lastNonQueueRailMode: 'now_playing',
+    }),
+  closeDesktopRail: () =>
+    set({
+      desktopRightRailMode: 'closed',
+      lastNonQueueRailMode: 'closed',
+    }),
+  toggleNowPlayingRail: () =>
     set((state) => ({
-      isNowPlayingPanelOpen: !state.isNowPlayingPanelOpen,
+      desktopRightRailMode: state.desktopRightRailMode === 'now_playing' ? 'closed' : 'now_playing',
+      lastNonQueueRailMode: state.desktopRightRailMode === 'now_playing' ? 'closed' : 'now_playing',
     })),
+  openQueueRail: () =>
+    set((state) => ({
+      desktopRightRailMode: 'queue',
+      lastNonQueueRailMode:
+        state.desktopRightRailMode === 'queue' ? state.lastNonQueueRailMode : state.desktopRightRailMode,
+    })),
+  closeQueueRailAndRestore: () =>
+    set((state) => ({
+      desktopRightRailMode: state.lastNonQueueRailMode,
+    })),
+  toggleQueueRail: () =>
+    set((state) => {
+      if (state.desktopRightRailMode === 'queue') {
+        return {
+          desktopRightRailMode: state.lastNonQueueRailMode,
+        }
+      }
+
+      return {
+        desktopRightRailMode: 'queue',
+        lastNonQueueRailMode: state.desktopRightRailMode,
+      }
+    }),
+  removeFromQueueAt: (index) =>
+    set((state) => {
+      if (!state.queue || index < 0 || index >= state.queue.tracks.length || index === state.queueIndex) {
+        return state
+      }
+
+      const nextTracks = state.queue.tracks.filter((_, trackIndex) => trackIndex !== index)
+      const nextQueueIndex = index < state.queueIndex ? Math.max(0, state.queueIndex - 1) : state.queueIndex
+
+      return {
+        queue: {
+          ...state.queue,
+          trackIds: nextTracks.map((entry) => entry.id),
+          tracks: nextTracks,
+        },
+        queueIndex: nextQueueIndex,
+      }
+    }),
+  clearUpcomingQueue: () =>
+    set((state) => {
+      if (!state.queue || !state.currentTrack) {
+        return state
+      }
+
+      const currentTrack = state.queue.tracks[state.queueIndex] ?? state.currentTrack
+      return {
+        queue: {
+          ...state.queue,
+          trackIds: [currentTrack.id],
+          tracks: [currentTrack],
+        },
+        queueIndex: 0,
+      }
+    }),
   handlePlaybackCompletion: () => {
     const { currentTrack, isShuffleEnabled, queue, queueIndex, repeatMode } = get()
 

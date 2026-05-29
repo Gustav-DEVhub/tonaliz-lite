@@ -9,6 +9,7 @@ interface ArtistMediaBlockProps {
   isLoading: boolean
   isOnline: boolean
   compact?: boolean
+  featured?: boolean
   className?: string
 }
 
@@ -18,6 +19,7 @@ export function ArtistMediaBlock({
   isLoading,
   isOnline,
   compact = false,
+  featured = false,
   className,
 }: ArtistMediaBlockProps) {
   const resolvedName = artistProfile?.name || artistName
@@ -26,8 +28,9 @@ export function ArtistMediaBlock({
   return (
     <div
       className={cn(
-        'flex items-start gap-4 rounded-[1.4rem] border border-white/8 bg-black/16',
-        compact ? 'px-3 py-3' : 'px-4 py-4 sm:px-5',
+        'rounded-[1.4rem] border border-white/8 bg-black/16',
+        featured ? 'grid gap-4 px-5 py-5 md:grid-cols-[7.5rem_minmax(0,1fr)]' : 'flex items-start gap-4',
+        compact ? 'px-3 py-3' : featured ? '' : 'px-4 py-4 sm:px-5',
         className,
       )}
     >
@@ -35,23 +38,41 @@ export function ArtistMediaBlock({
         <img
           src={artistProfile.imageUrl}
           alt={`${resolvedName} portrait`}
-          className={cn(compact ? 'size-14 rounded-[1rem]' : 'size-18 rounded-[1.2rem]', 'object-cover')}
+          className={cn(
+            compact
+              ? 'size-14 rounded-[1rem]'
+              : featured
+                ? 'size-[7.5rem] rounded-[1.4rem]'
+                : 'size-18 rounded-[1.2rem]',
+            'object-cover',
+          )}
         />
       ) : (
         <div
           className={cn(
             'flex items-center justify-center rounded-[1.2rem] border border-border-subtle bg-black/20 text-text-muted',
-            compact ? 'size-14 rounded-[1rem]' : 'size-18',
+            compact
+              ? 'size-14 rounded-[1rem]'
+              : featured
+                ? 'size-[7.5rem] rounded-[1.4rem]'
+                : 'size-18',
           )}
         >
-          <Globe2 className={compact ? 'size-5' : 'size-6'} />
+          <Globe2 className={compact ? 'size-5' : featured ? 'size-8' : 'size-6'} />
         </div>
       )}
 
       <div className="min-w-0 flex-1">
         <p className="font-mono text-[0.68rem] uppercase tracking-[0.22em] text-text-muted">Artist</p>
-        <h3 className={cn('mt-2 font-heading text-text-primary', compact ? 'text-lg' : 'text-2xl')}>{resolvedName}</h3>
-        <p className={cn('mt-2 text-text-secondary', compact ? 'text-xs leading-5' : 'text-sm leading-6')}>
+        <h3 className={cn('mt-2 font-heading text-text-primary', compact ? 'text-lg' : featured ? 'text-3xl' : 'text-2xl')}>
+          {resolvedName}
+        </h3>
+        <p
+          className={cn(
+            'mt-2 text-text-secondary',
+            compact ? 'text-xs leading-5' : featured ? 'text-sm leading-7' : 'text-sm leading-6',
+          )}
+        >
           {isLoading
             ? 'Loading artist details from Jamendo.'
             : hasLinks

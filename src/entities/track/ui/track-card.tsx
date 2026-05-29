@@ -1,4 +1,5 @@
 import { Heart, Pause, Play } from 'lucide-react'
+import type { KeyboardEvent, MouseEvent } from 'react'
 import type { Track } from '@/entities/track/model/types'
 import { detectMood } from '@/lib/mood/detect-mood'
 import { moodTheme } from '@/shared/constants/mood-theme'
@@ -12,6 +13,7 @@ export function TrackCard({
   isPlaying,
   isFavorite,
   onPlay,
+  onOpenArtist,
   onToggleFavorite,
 }: {
   track: Track
@@ -19,17 +21,40 @@ export function TrackCard({
   isPlaying: boolean
   isFavorite: boolean
   onPlay: () => void
+  onOpenArtist: () => void
   onToggleFavorite: () => void
 }) {
   const mood = detectMood(track)
   const moodToken = moodTheme[mood]
 
+  const handleOpenArtistFromKeyboard = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return
+    }
+
+    event.preventDefault()
+    onOpenArtist()
+  }
+
+  const stopEvent = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+  }
+
+  const stopKeyboardPropagation = (event: KeyboardEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+  }
+
   return (
     <article
+      role="button"
+      tabIndex={0}
+      onClick={onOpenArtist}
+      onKeyDown={handleOpenArtistFromKeyboard}
       className={cn(
-        'track-card-surface group flex h-full flex-col gap-4 overflow-hidden rounded-[1.6rem] p-4 transition-all duration-300 hover:-translate-y-1',
+        'track-card-surface group flex h-full cursor-pointer flex-col gap-4 overflow-hidden rounded-[1.6rem] p-4 transition-all duration-300 hover:-translate-y-1 hover:brightness-[1.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/16',
         isCurrent && 'mood-glow ring-1 ring-white/10',
       )}
+      aria-label={`Open ${track.artistName} artist playlist`}
     >
       <div className="relative overflow-hidden rounded-[1.3rem]">
         <img
@@ -51,8 +76,12 @@ export function TrackCard({
           <Button
             type="button"
             size="icon"
-            className="mood-glow border-transparent bg-black/55 text-white hover:bg-black/70"
-            onClick={onPlay}
+            className="mood-glow size-11 border-transparent bg-black/55 text-white opacity-100 hover:bg-black/70 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
+            onClick={(event) => {
+              stopEvent(event)
+              onPlay()
+            }}
+            onKeyDown={stopKeyboardPropagation}
           >
             {isCurrent && isPlaying ? <Pause className="size-4" /> : <Play className="ml-0.5 size-4" />}
           </Button>
@@ -77,7 +106,11 @@ export function TrackCard({
                 ? 'border-primary/40 bg-primary/14 text-primary-soft'
                 : 'border-border-subtle text-text-muted hover:text-text-primary',
             )}
-            onClick={onToggleFavorite}
+            onClick={(event) => {
+              stopEvent(event)
+              onToggleFavorite()
+            }}
+            onKeyDown={stopKeyboardPropagation}
             aria-label={isFavorite ? 'Remove favorite' : 'Add favorite'}
           >
             <Heart className={cn('size-4', isFavorite && 'fill-current')} />

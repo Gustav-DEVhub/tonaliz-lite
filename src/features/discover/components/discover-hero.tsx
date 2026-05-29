@@ -1,5 +1,11 @@
-import { Sparkles } from 'lucide-react'
 import { Button } from '@/shared/ui/button'
+
+const discoverChips = [
+  { label: '✨ New', query: 'dream pop' },
+  { label: '🎧 Moods', query: 'ambient' },
+  { label: '🎼 Genres', query: 'indie rock' },
+  { label: '🌙 Focus', query: 'lofi' },
+] as const
 
 const recommendedSearches = ['dream pop', 'ambient', 'indie rock', 'lofi']
 
@@ -11,22 +17,26 @@ export function DiscoverHero({
   disabled?: boolean
 }) {
   return (
-    <section className="editorial-panel relative overflow-hidden rounded-[2rem] px-6 py-8 sm:px-8 lg:px-10">
-      <div className="absolute inset-y-0 right-0 hidden w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(155,92,255,0.24),transparent_52%)] lg:block" />
-      <div className="relative max-w-3xl space-y-5">
-        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/25 px-3 py-1.5 font-mono text-xs uppercase tracking-[0.22em] text-text-secondary">
-          <Sparkles className="size-3.5 text-secondary-safe" />
-          Independent discovery
+    <section className="editorial-panel relative overflow-hidden rounded-[2rem] px-4 py-3 sm:px-5 lg:px-6 lg:py-3">
+      <div className="absolute inset-y-0 right-0 hidden w-[24%] bg-[radial-gradient(circle_at_top_right,rgba(155,92,255,0.12),transparent_58%)] lg:block" />
+
+      <div className="relative flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {discoverChips.map((chip) => (
+            <Button
+              key={chip.label}
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="border border-white/12 bg-black/20 font-mono text-[0.72rem] uppercase tracking-[0.2em] text-text-primary"
+              disabled={disabled}
+              onClick={() => onSuggestionSelect(chip.query)}
+            >
+              {chip.label}
+            </Button>
+          ))}
         </div>
-        <div className="space-y-3">
-          <h1 className="max-w-2xl font-heading text-4xl leading-tight text-text-primary sm:text-5xl">
-            Discover independent tracks with a player that reacts to the mood of what you hear.
-          </h1>
-          <p className="max-w-2xl text-base leading-7 text-text-secondary">
-            Tonaliz Lite turns Jamendo search into a lightweight music experience with persistent favorites,
-            a responsive player, and a visual atmosphere tuned by simple mood rules.
-          </p>
-        </div>
+
         <div className="flex flex-wrap gap-2">
           {recommendedSearches.map((suggestion) => (
             <Button

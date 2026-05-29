@@ -79,6 +79,15 @@ input {
   min-height: 100vh;
 }
 
+@media (min-width: 1024px) {
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+  }
+}
+
 ::selection {
   background: color-mix(in srgb, var(--mood-accent) 40%, transparent);
   color: var(--text-primary);
