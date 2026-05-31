@@ -15,14 +15,14 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'editorial-panel flex min-h-72 flex-col items-start justify-center gap-4 rounded-[1.75rem] px-5 py-8 sm:px-6 sm:py-10',
+        'editorial-panel flex min-h-56 flex-col items-start justify-center gap-3 rounded-[1.75rem] px-4 py-6 sm:min-h-72 sm:px-6 sm:py-10',
         className,
       )}
     >
-      <p className="font-mono text-xs uppercase tracking-[0.28em] text-text-muted">No tracks yet</p>
+      <p className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-text-muted">No tracks yet</p>
       <div className="space-y-2">
-        <h3 className="font-heading text-2xl text-text-primary sm:text-[1.75rem]">{title}</h3>
-        <p className="max-w-xl text-sm leading-6 text-text-secondary">{description}</p>
+        <h3 className="font-heading text-[1.45rem] leading-tight text-text-primary sm:text-[1.75rem]">{title}</h3>
+        <p className="max-w-xl text-[0.94rem] leading-6 text-text-secondary sm:text-sm">{description}</p>
       </div>
       {action}
     </div>

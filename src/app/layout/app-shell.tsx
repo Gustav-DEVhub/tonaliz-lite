@@ -51,15 +51,15 @@ export function AppShell() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--mood-accent)_14%,transparent),transparent_34%)]" />
 
       <header className="fixed inset-x-0 top-0 z-50 border-b border-white/6 bg-app-bg/88 backdrop-blur-xl">
-        <div className="space-y-3 px-4 py-4 sm:px-6 lg:hidden lg:px-8">
+        <div className="space-y-2.5 px-3.5 py-3 sm:px-5 sm:py-3.5 lg:hidden lg:px-8">
           <div className="flex w-full items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex size-11 items-center justify-center rounded-2xl border border-white/10 bg-black/30">
-                <Headphones className="size-5 text-primary-soft" />
+            <div className="flex min-w-0 items-center gap-2.5">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-[1.15rem] border border-white/10 bg-black/30">
+                <Headphones className="size-[1.05rem] text-primary-soft" />
               </div>
-              <div>
-                <p className="font-heading text-xl tracking-tight text-text-primary">Tonaliz Lite</p>
-                <p className="font-mono text-[0.68rem] uppercase tracking-[0.24em] text-text-muted">
+              <div className="min-w-0">
+                <p className="truncate font-heading text-lg tracking-tight text-text-primary">Tonaliz Lite</p>
+                <p className="truncate font-mono text-[0.58rem] uppercase tracking-[0.16em] text-text-muted">
                   independent music discovery
                 </p>
               </div>
@@ -100,7 +100,7 @@ export function AppShell() {
 
           <SearchBar
             compact
-            className="editorial-panel w-full rounded-full px-3 py-2"
+            className="editorial-panel w-full rounded-[1.45rem] px-2.5 py-1.5"
             query={query}
             onQueryChange={(value) => {
               setQuery(value)
@@ -174,8 +174,12 @@ export function AppShell() {
 
       <main
         className={cn(
-          'w-full px-4 pt-32 sm:px-6 md:pt-36 lg:h-screen lg:overflow-hidden lg:px-6 lg:pt-[7.1rem] xl:px-8 2xl:px-10',
-          isExpandedPlayerPage ? 'pb-8 md:pb-10 lg:pb-8' : 'pb-72 md:pb-48 lg:pb-[8.75rem]',
+          'w-full px-3.5 pt-28 sm:px-5 sm:pt-[7.4rem] md:pt-36 lg:h-screen lg:overflow-hidden lg:px-6 lg:pt-[7.1rem] xl:px-8 2xl:px-10',
+          isExpandedPlayerPage
+            ? 'pb-8 md:pb-10 lg:pb-8'
+            : currentTrack
+              ? 'pb-[8.8rem] sm:pb-[9.2rem] md:pb-48 lg:pb-[8.75rem]'
+              : 'pb-[6.9rem] sm:pb-[7.3rem] md:pb-48 lg:pb-[8.75rem]',
         )}
       >
         <div
@@ -240,7 +244,7 @@ export function AppShell() {
       {!isExpandedPlayerPage ? <BottomPlayer /> : null}
       <nav
         className={cn(
-          'fixed inset-x-0 bottom-0 z-50 border-t border-white/6 bg-app-bg/92 px-3 py-2 backdrop-blur-xl md:hidden',
+          'fixed inset-x-0 bottom-0 z-50 border-t border-white/6 bg-app-bg/92 px-2.5 py-1.5 pb-[calc(env(safe-area-inset-bottom)+0.45rem)] backdrop-blur-xl md:hidden',
           isExpandedPlayerPage && 'hidden',
         )}
       >
@@ -250,7 +254,7 @@ export function AppShell() {
               {({ isActive }) => (
                 <span
                   className={cn(
-                    'flex flex-col items-center justify-center gap-1 rounded-2xl border px-3 py-2 text-xs transition-colors',
+                    'flex flex-col items-center justify-center gap-0.5 rounded-[1.1rem] border px-3 py-1.5 text-[0.72rem] transition-colors',
                     isActive
                       ? 'border-white/12 bg-white/8 text-text-primary'
                       : 'border-transparent text-text-secondary',

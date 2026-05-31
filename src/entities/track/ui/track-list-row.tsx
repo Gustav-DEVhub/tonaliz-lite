@@ -39,17 +39,17 @@ export function TrackListRow({
   return (
     <article
       className={cn(
-        'track-card-surface rounded-[1.45rem] px-3 py-3 transition-all duration-300 sm:px-4',
+        'track-card-surface rounded-[1.3rem] px-3 py-3 transition-all duration-300 sm:rounded-[1.45rem] sm:px-4',
         isCurrent && 'mood-glow ring-1 ring-white/10',
       )}
     >
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:gap-4">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <img src={track.imageUrl} alt={`${track.name} artwork`} className="size-[4.4rem] rounded-[1rem] object-cover sm:size-[4.8rem]" />
+      <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:gap-4">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
+          <img src={track.imageUrl} alt={`${track.name} artwork`} className="size-[4rem] rounded-[0.95rem] object-cover sm:size-[4.8rem] sm:rounded-[1rem]" />
 
           <button
             type="button"
-            className="mood-glow flex size-10 shrink-0 items-center justify-center rounded-full border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(0,0,0,0.08)),color-mix(in_srgb,var(--mood-accent)_18%,rgba(0,0,0,0.6))] text-white transition-transform duration-200 hover:scale-[1.03] hover:border-white/18"
+            className="mood-glow flex size-9 shrink-0 items-center justify-center rounded-full border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(0,0,0,0.08)),color-mix(in_srgb,var(--mood-accent)_18%,rgba(0,0,0,0.6))] text-white transition-transform duration-200 hover:scale-[1.03] hover:border-white/18 sm:size-10"
             onClick={onPlay}
             aria-label={isCurrent && isPlaying ? 'Pause track' : 'Play track'}
           >
@@ -59,7 +59,7 @@ export function TrackListRow({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <Badge
-                className="border-transparent"
+                className="border-transparent uppercase tracking-[0.12em]"
                 style={{
                   background: `color-mix(in srgb, ${moodToken.background} 72%, rgba(0, 0, 0, 0.45))`,
                   color: moodToken.text,
@@ -67,12 +67,12 @@ export function TrackListRow({
               >
                 {moodToken.label}
               </Badge>
-              <p className="font-mono text-[0.66rem] uppercase tracking-[0.18em] text-text-muted">Track</p>
+              <p className="font-mono text-[0.64rem] uppercase tracking-[0.12em] text-text-muted">Track</p>
             </div>
-            <h3 className="mt-2 line-clamp-1 font-heading text-lg text-text-primary sm:text-xl">
+            <h3 className="mt-1.5 line-clamp-1 font-heading text-[1.02rem] text-text-primary sm:mt-2 sm:text-xl">
               {truncateText(track.name, 68)}
             </h3>
-            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-text-secondary">
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.9rem] leading-5 text-text-secondary sm:text-sm">
               <span className="line-clamp-1">{truncateText(track.artistName, 58)}</span>
               <span className="hidden text-text-muted sm:inline">/</span>
               <span className="truncate text-text-muted">{track.genre ?? 'Independent release'}</span>
@@ -87,8 +87,8 @@ export function TrackListRow({
             ))}
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-4">
-            <span className="text-xs text-text-muted">{formatDuration(track.duration)}</span>
+          <div className="flex items-center gap-2.5 sm:gap-4">
+            <span className="text-[0.78rem] text-text-secondary sm:text-xs sm:text-text-muted">{formatDuration(track.duration)}</span>
             <button
               type="button"
               className={cn(
@@ -113,7 +113,7 @@ export function TrackListRow({
       </div>
 
       {track.tags.length > 0 ? (
-        <div className="mt-3 flex flex-wrap gap-2 md:hidden">
+        <div className="mt-2.5 flex flex-wrap gap-1.5 md:hidden">
           {track.tags.slice(0, 3).map((tag) => (
             <Badge key={`${track.id}-mobile-${tag}`}>{tag}</Badge>
           ))}

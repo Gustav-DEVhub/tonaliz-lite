@@ -55,27 +55,27 @@ export function HomePage() {
   }
 
   return (
-    <div className="space-y-6 lg:space-y-5">
-      <section className="editorial-panel rounded-[2rem] px-5 py-5 sm:px-6 lg:px-7">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+    <div className="space-y-5 lg:space-y-5">
+      <section className="editorial-panel rounded-[1.75rem] px-4 py-4 sm:rounded-[2rem] sm:px-6 sm:py-5 lg:px-7">
+        <div className="flex flex-col gap-3.5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl space-y-2">
-            <p className="font-mono text-xs uppercase tracking-[0.28em] text-text-muted">Home</p>
-            <h1 className="font-heading text-[1.55rem] leading-tight text-text-primary sm:text-[1.85rem]">
+            <p className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-text-muted">Home</p>
+            <h1 className="font-heading text-[1.38rem] leading-tight text-text-primary sm:text-[1.85rem]">
               Start with what fits today.
             </h1>
-            <p className="max-w-xl text-sm text-text-secondary">
+            <p className="max-w-xl text-[0.92rem] leading-5 text-text-secondary sm:text-sm sm:leading-6">
               Daily recommendation shelves, quick mood shortcuts, and the tracks you played most recently.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2 lg:max-w-md lg:justify-end">
+          <div className="flex flex-wrap gap-1.5 lg:max-w-md lg:justify-end">
             {quickMoodSuggestions.map((suggestion) => (
               <Button
                 key={suggestion}
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="border border-border-subtle bg-black/15"
+                className="h-8 rounded-full border border-border-subtle bg-black/15 px-3 text-[0.78rem] text-text-secondary hover:text-text-primary"
                 onClick={() => {
                   navigate(`/discover?q=${encodeURIComponent(suggestion)}`)
                 }}
@@ -106,7 +106,7 @@ export function HomePage() {
       ) : null}
 
       {!recommendations.isLoading && recommendations.shelves.length > 0 ? (
-        <div className="space-y-7">
+        <div className="space-y-6">
           {recommendations.shelves.map((shelf) => (
             <TrackShelfSection
               key={shelf.id}
@@ -134,8 +134,8 @@ export function HomePage() {
       <section className="space-y-4">
         <div className="flex items-end justify-between gap-4">
           <div className="space-y-1">
-            <p className="font-heading text-xl text-text-primary sm:text-2xl">Recently played</p>
-            <p className="max-w-2xl text-sm text-text-secondary">
+            <p className="font-heading text-[1.15rem] text-text-primary sm:text-2xl">Recently played</p>
+            <p className="max-w-2xl text-[0.92rem] leading-5 text-text-secondary sm:text-sm sm:leading-6">
               Jump back into your latest sessions without rebuilding the trail from scratch.
             </p>
           </div>

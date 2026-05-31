@@ -51,21 +51,21 @@ export function TrackCard({
       onClick={onOpenArtist}
       onKeyDown={handleOpenArtistFromKeyboard}
       className={cn(
-        'track-card-surface group flex h-full cursor-pointer flex-col gap-4 overflow-hidden rounded-[1.6rem] p-4 transition-all duration-300 hover:-translate-y-1 hover:brightness-[1.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/16',
+        'track-card-surface group flex h-full cursor-pointer flex-col gap-3 overflow-hidden rounded-[1.45rem] p-3 transition-all duration-300 hover:-translate-y-1 hover:brightness-[1.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/16 sm:gap-4 sm:rounded-[1.6rem] sm:p-4',
         isCurrent && 'mood-glow ring-1 ring-white/10',
       )}
       aria-label={`Open ${track.artistName} artist playlist`}
     >
-      <div className="relative overflow-hidden rounded-[1.3rem]">
+      <div className="relative overflow-hidden rounded-[1.15rem] sm:rounded-[1.3rem]">
         <img
           src={track.imageUrl}
           alt={`${track.name} artwork`}
           className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-3">
+        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-2.5 sm:p-3">
           <Badge
-            className="border-transparent"
+            className="border-transparent uppercase tracking-[0.12em]"
             style={{
               background: `color-mix(in srgb, ${moodToken.background} 72%, rgba(0, 0, 0, 0.45))`,
               color: moodToken.text,
@@ -91,10 +91,10 @@ export function TrackCard({
       <div className="space-y-2">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="line-clamp-2 font-heading text-lg leading-tight text-text-primary">
+            <p className="line-clamp-2 font-heading text-[1.02rem] leading-tight text-text-primary sm:text-lg">
               {truncateText(track.name, 38)}
             </p>
-            <p className="mt-1 line-clamp-2 text-sm text-text-secondary">
+            <p className="mt-1 line-clamp-2 text-[0.92rem] leading-5 text-text-secondary sm:text-sm">
               {truncateText(track.artistName, 44)}
             </p>
           </div>
@@ -117,14 +117,14 @@ export function TrackCard({
           </button>
         </div>
 
-        <div className="flex items-center justify-between gap-3 text-xs text-text-muted">
+        <div className="flex items-center justify-between gap-3 text-[0.78rem] text-text-secondary sm:text-xs">
           <span className="min-w-0 truncate">{track.genre ?? 'Independent release'}</span>
           <span>{formatDuration(track.duration)}</span>
         </div>
       </div>
 
       {track.tags.length > 0 ? (
-        <div className="mt-auto flex flex-wrap gap-2">
+        <div className="mt-auto flex flex-wrap gap-1.5 sm:gap-2">
           {track.tags.slice(0, 3).map((tag) => (
             <Badge key={`${track.id}-${tag}`}>{tag}</Badge>
           ))}

@@ -78,7 +78,7 @@ export function DiscoverPage() {
   }
 
   return (
-    <div className="space-y-6 lg:flex lg:min-h-full lg:flex-col lg:space-y-5">
+    <div className="space-y-5 lg:flex lg:min-h-full lg:flex-col lg:space-y-5">
       <DiscoverHero
         disabled={!isOnline || isLoading}
         onSuggestionSelect={(value) => {
@@ -99,13 +99,13 @@ export function DiscoverPage() {
       ) : null}
 
       <section className="space-y-4 lg:flex lg:flex-col">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.28em] text-text-muted">Discover</p>
-            <h2 className="font-heading text-2xl text-text-primary">
+            <p className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-text-muted">Discover</p>
+            <h2 className="font-heading text-[1.42rem] leading-tight text-text-primary sm:text-2xl">
               {lastSearchedQuery ? `Results for "${lastSearchedQuery}"` : 'Explore independent music'}
             </h2>
-            <p className="mt-1 text-sm text-text-secondary xl:max-w-2xl">
+            <p className="mt-1 text-[0.92rem] leading-5 text-text-secondary sm:text-sm sm:leading-6 xl:max-w-2xl">
               {lastSearchedQuery
                 ? 'A cleaner catalog view for fast scanning, clear metadata, and playback-first interaction.'
                 : 'Browse cover-first shelves, then use search when you want a tighter listening path.'}

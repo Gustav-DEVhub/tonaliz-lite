@@ -19,11 +19,11 @@ export function LibraryPage() {
   const playNextInQueue = usePlayerStore((state) => state.playNextInQueue)
   const addToQueue = usePlayerStore((state) => state.addToQueue)
   return (
-    <div className="space-y-6 lg:flex lg:min-h-full lg:flex-col lg:space-y-5">
-      <section className="editorial-panel rounded-[2rem] px-6 py-8 sm:px-8">
-        <p className="font-mono text-xs uppercase tracking-[0.28em] text-text-muted">Library</p>
-        <h1 className="mt-3 font-heading text-4xl text-text-primary">Your saved favorites</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-7 text-text-secondary">
+    <div className="space-y-5 lg:flex lg:min-h-full lg:flex-col lg:space-y-5">
+      <section className="editorial-panel rounded-[1.75rem] px-4 py-5 sm:rounded-[2rem] sm:px-8 sm:py-8">
+        <p className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-text-muted">Library</p>
+        <h1 className="mt-2 font-heading text-[1.55rem] leading-tight text-text-primary sm:mt-3 sm:text-4xl">Your saved favorites</h1>
+        <p className="mt-2 max-w-2xl text-[0.92rem] leading-6 text-text-secondary sm:mt-3 sm:text-sm sm:leading-7">
           Metadata stays available locally through IndexedDB, so your collection remains visible even when
           the network drops.
         </p>

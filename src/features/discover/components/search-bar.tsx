@@ -31,12 +31,12 @@ export function SearchBar({
           onChange={(event) => onQueryChange(event.target.value)}
           placeholder="Search tracks, artists, or moods"
           aria-label="Search independent music"
-          className={compact ? 'h-11 flex-1 bg-black/20' : 'h-[3.25rem] flex-1'}
+          className={compact ? 'h-10 flex-1 rounded-[1.2rem] bg-black/18 px-3 text-sm' : 'h-[3.25rem] flex-1'}
         />
         <Button
           type="submit"
           size={compact ? 'icon' : 'lg'}
-          className={compact ? 'shrink-0' : 'sm:min-w-36'}
+          className={compact ? 'size-10 shrink-0 rounded-full' : 'sm:min-w-36'}
           disabled={disabled}
         >
           <Search className="size-4" />
