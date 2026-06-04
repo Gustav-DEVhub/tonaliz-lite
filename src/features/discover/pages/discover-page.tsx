@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { createPlaylist } from '@/entities/track/lib/create-playlist'
 import { getArtistRouteTarget } from '@/features/artist/lib/artist-route'
 import { TrackListRow } from '@/entities/track/ui/track-list-row'
 import { DiscoverHero } from '@/features/discover/components/discover-hero'
@@ -30,8 +31,9 @@ export function DiscoverPage() {
   const favorites = useFavoritesStore((state) => state.favorites)
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite)
   const currentTrack = usePlayerStore((state) => state.currentTrack)
+  const queue = usePlayerStore((state) => state.queue)
   const isPlaying = usePlayerStore((state) => state.isPlaying)
-  const playSingleTrack = usePlayerStore((state) => state.playSingleTrack)
+  const playTrackFromContext = usePlayerStore((state) => state.playTrackFromContext)
   const togglePlay = usePlayerStore((state) => state.togglePlay)
   const playNextInQueue = usePlayerStore((state) => state.playNextInQueue)
   const addToQueue = usePlayerStore((state) => state.addToQueue)
@@ -65,6 +67,10 @@ export function DiscoverPage() {
     typeof window !== 'undefined' && resolvedQuery
       ? `${window.location.origin}/discover?q=${encodeURIComponent(resolvedQuery)}`
       : null
+  const searchResultsPlaylist = useMemo(
+    () => createPlaylist(resolvedQuery ? `Search: ${resolvedQuery}` : 'Search results', 'discover', results),
+    [resolvedQuery, results],
+  )
 
   const openArtistFromTrack = (track: (typeof results)[number]) => {
     const target = getArtistRouteTarget(track)
@@ -192,12 +198,14 @@ export function DiscoverPage() {
                   isPlaying={isCurrent && isPlaying}
                   isFavorite={isFavorite}
                   onPlay={() => {
-                    if (isCurrent) {
+                    const shouldToggleCurrent = isCurrent && queue?.id === searchResultsPlaylist.id
+
+                    if (shouldToggleCurrent) {
                       togglePlay()
                       return
                     }
 
-                    playSingleTrack(track)
+                    playTrackFromContext(track, searchResultsPlaylist)
                   }}
                   onToggleFavorite={() => {
                     void toggleFavorite(track)
@@ -252,15 +260,15 @@ export function DiscoverPage() {
                 currentTrack={currentTrack}
                 isPlaying={isPlaying}
                 favoriteTrackIds={favoriteTrackIds}
-                onPlayTrack={(track) => {
-                  const isCurrent = currentTrack?.id === track.id
+                onPlayTrack={(track, playlist) => {
+                  const shouldToggleCurrent = currentTrack?.id === track.id && queue?.id === playlist.id
 
-                  if (isCurrent) {
+                  if (shouldToggleCurrent) {
                     togglePlay()
                     return
                   }
 
-                  playSingleTrack(track)
+                  playTrackFromContext(track, playlist)
                 }}
                 onOpenArtist={(track) => {
                   openArtistFromTrack(track)

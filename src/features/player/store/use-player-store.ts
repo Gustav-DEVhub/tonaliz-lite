@@ -27,6 +27,8 @@ interface PlayerState {
   lastNonQueueRailMode: Exclude<DesktopRightRailMode, 'queue'>
   setTrack: (track: Track, options?: SetTrackOptions) => void
   playTrack: (track: Track, queue?: Playlist | null) => void
+  playTrackFromContext: (track: Track, queue: Playlist) => void
+  playTrackInCurrentQueue: (index: number) => void
   playSingleTrack: (track: Track) => void
   play: () => void
   pause: () => void
@@ -122,6 +124,27 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   playTrack: (track, queue) => {
     get().setTrack(track, { queue, autoPlay: true })
   },
+  playTrackFromContext: (track, queue) => {
+    get().setTrack(track, { queue, autoPlay: true })
+  },
+  playTrackInCurrentQueue: (index) =>
+    set((state) => {
+      if (!state.queue || index < 0 || index >= state.queue.tracks.length) {
+        return state
+      }
+
+      const nextTrack = state.queue.tracks[index]
+
+      return {
+        currentTrack: nextTrack,
+        queueIndex: index,
+        isPlaying: true,
+        progress: 0,
+        currentTime: 0,
+        duration: nextTrack.duration,
+        currentMood: detectMood(nextTrack),
+      }
+    }),
   playSingleTrack: (track) => {
     get().setTrack(track, { queue: createSingleTrackQueue(track), autoPlay: true })
   },

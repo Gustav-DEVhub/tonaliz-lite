@@ -1,4 +1,5 @@
-import type { PlaylistSource, Track } from '@/entities/track/model/types'
+import { createPlaylist } from '@/entities/track/lib/create-playlist'
+import type { Playlist, PlaylistSource, Track } from '@/entities/track/model/types'
 import { TrackCard } from '@/entities/track/ui/track-card'
 import { cn } from '@/shared/lib/utils'
 
@@ -22,12 +23,13 @@ export function TrackShelfSection({
   currentTrack: Track | null
   isPlaying: boolean
   favoriteTrackIds: Set<string>
-  onPlayTrack: (track: Track) => void
+  onPlayTrack: (track: Track, queue: Playlist) => void
   onOpenArtist: (track: Track) => void
   onToggleFavorite: (track: Track) => void
   className?: string
 }) {
   const sectionId = `${source}-${title.toLowerCase().replace(/\s+/g, '-')}`
+  const sectionPlaylist = createPlaylist(title, source, tracks)
 
   return (
     <section className={cn('min-w-0 space-y-3.5', className)}>
@@ -57,7 +59,7 @@ export function TrackShelfSection({
                   isPlaying={isCurrent && isPlaying}
                   isFavorite={favoriteTrackIds.has(track.id)}
                   onPlay={() => {
-                    onPlayTrack(track)
+                    onPlayTrack(track, sectionPlaylist)
                   }}
                   onOpenArtist={() => {
                     onOpenArtist(track)

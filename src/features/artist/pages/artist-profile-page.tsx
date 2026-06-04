@@ -25,7 +25,7 @@ export function ArtistProfilePage() {
   const queue = usePlayerStore((state) => state.queue)
   const isPlaying = usePlayerStore((state) => state.isPlaying)
   const togglePlay = usePlayerStore((state) => state.togglePlay)
-  const playTrack = usePlayerStore((state) => state.playTrack)
+  const playTrackFromContext = usePlayerStore((state) => state.playTrackFromContext)
   const playNextInQueue = usePlayerStore((state) => state.playNextInQueue)
   const addToQueue = usePlayerStore((state) => state.addToQueue)
   const isOnline = usePlayerStore((state) => state.isOnline)
@@ -183,7 +183,7 @@ export function ArtistProfilePage() {
                       return
                     }
 
-                    playTrack(track, artistPlaylist)
+                    playTrackFromContext(track, artistPlaylist)
                   }}
                   onToggleFavorite={() => {
                     void toggleFavorite(track)

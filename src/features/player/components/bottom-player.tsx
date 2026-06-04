@@ -25,6 +25,7 @@ export function BottomPlayer() {
   const togglePlay = usePlayerStore((state) => state.togglePlay)
   const nextTrack = usePlayerStore((state) => state.nextTrack)
   const previousTrack = usePlayerStore((state) => state.previousTrack)
+  const playTrackInCurrentQueue = usePlayerStore((state) => state.playTrackInCurrentQueue)
   const seekTo = usePlayerStore((state) => state.seekTo)
   const toggleShuffle = usePlayerStore((state) => state.toggleShuffle)
   const cycleRepeatMode = usePlayerStore((state) => state.cycleRepeatMode)
@@ -75,6 +76,8 @@ export function BottomPlayer() {
         currentTime={currentTime}
         duration={resolvedDuration}
         currentMood={currentMood}
+        queue={queue}
+        queueIndex={queueIndex}
         hasNextTrack={hasNextTrack}
         hasPreviousTrack={hasPreviousTrack}
         isShuffleEnabled={isShuffleEnabled}
@@ -83,6 +86,7 @@ export function BottomPlayer() {
         onTogglePlay={togglePlay}
         onNext={nextTrack}
         onPrevious={previousTrack}
+        onPlayQueuedTrack={playTrackInCurrentQueue}
         onToggleShuffle={toggleShuffle}
         onCycleRepeatMode={cycleRepeatMode}
         onToggleFavorite={() => {

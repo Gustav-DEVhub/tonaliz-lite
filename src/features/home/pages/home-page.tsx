@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import type { Track } from '@/entities/track/model/types'
+import type { Playlist, Track } from '@/entities/track/model/types'
 import { getArtistRouteTarget } from '@/features/artist/lib/artist-route'
 import { TrackGridSkeleton } from '@/features/discover/components/track-grid-skeleton'
 import { TrackShelfSection } from '@/features/discover/components/track-shelf-section'
@@ -20,8 +20,9 @@ export function HomePage() {
   const navigate = useNavigate()
   const isOnline = usePlayerStore((state) => state.isOnline)
   const currentTrack = usePlayerStore((state) => state.currentTrack)
+  const queue = usePlayerStore((state) => state.queue)
   const isPlaying = usePlayerStore((state) => state.isPlaying)
-  const playSingleTrack = usePlayerStore((state) => state.playSingleTrack)
+  const playTrackFromContext = usePlayerStore((state) => state.playTrackFromContext)
   const togglePlay = usePlayerStore((state) => state.togglePlay)
 
   const favorites = useFavoritesStore((state) => state.favorites)
@@ -32,15 +33,15 @@ export function HomePage() {
   const recommendationConfigs = useMemo(() => getDailyRecommendationConfigs(), [])
   const recommendations = useTrackShelves(recommendationConfigs, isOnline)
 
-  const handlePlayFromShelf = (track: Track) => {
-    const isCurrent = currentTrack?.id === track.id
+  const handlePlayFromShelf = (track: Track, playlist: Playlist) => {
+    const shouldToggleCurrent = currentTrack?.id === track.id && queue?.id === playlist.id
 
-    if (isCurrent) {
+    if (shouldToggleCurrent) {
       togglePlay()
       return
     }
 
-    playSingleTrack(track)
+    playTrackFromContext(track, playlist)
   }
 
   const openArtistFromTrack = (track: Track) => {
@@ -117,8 +118,8 @@ export function HomePage() {
               currentTrack={currentTrack}
               isPlaying={isPlaying}
               favoriteTrackIds={favoriteTrackIds}
-              onPlayTrack={(track) => {
-                handlePlayFromShelf(track)
+              onPlayTrack={(track, playlist) => {
+                handlePlayFromShelf(track, playlist)
               }}
               onOpenArtist={(track) => {
                 openArtistFromTrack(track)
@@ -160,8 +161,8 @@ export function HomePage() {
             currentTrack={currentTrack}
             isPlaying={isPlaying}
             favoriteTrackIds={favoriteTrackIds}
-            onPlayTrack={(track) => {
-              handlePlayFromShelf(track)
+            onPlayTrack={(track, playlist) => {
+              handlePlayFromShelf(track, playlist)
             }}
             onOpenArtist={(track) => {
               openArtistFromTrack(track)

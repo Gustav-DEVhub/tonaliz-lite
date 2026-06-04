@@ -1,3 +1,5 @@
+import { useMemo } from 'react'
+import { createPlaylist } from '@/entities/track/lib/create-playlist'
 import { TrackListRow } from '@/entities/track/ui/track-list-row'
 import { useFavoritesStore } from '@/features/library/store/use-favorites-store'
 import { usePlayerStore } from '@/features/player/store/use-player-store'
@@ -13,11 +15,13 @@ export function LibraryPage() {
   const isOnline = usePlayerStore((state) => state.isOnline)
 
   const currentTrack = usePlayerStore((state) => state.currentTrack)
+  const queue = usePlayerStore((state) => state.queue)
   const isPlaying = usePlayerStore((state) => state.isPlaying)
-  const playSingleTrack = usePlayerStore((state) => state.playSingleTrack)
+  const playTrackFromContext = usePlayerStore((state) => state.playTrackFromContext)
   const togglePlay = usePlayerStore((state) => state.togglePlay)
   const playNextInQueue = usePlayerStore((state) => state.playNextInQueue)
   const addToQueue = usePlayerStore((state) => state.addToQueue)
+  const favoritesPlaylist = useMemo(() => createPlaylist('Saved favorites', 'library', favorites), [favorites])
   return (
     <div className="space-y-5 lg:flex lg:min-h-full lg:flex-col lg:space-y-5">
       <section className="editorial-panel rounded-[1.75rem] px-4 py-5 sm:rounded-[2rem] sm:px-8 sm:py-8">
@@ -61,12 +65,14 @@ export function LibraryPage() {
                   isPlaying={isCurrent && isPlaying}
                   isFavorite
                   onPlay={() => {
-                    if (isCurrent) {
+                    const shouldToggleCurrent = isCurrent && queue?.id === favoritesPlaylist.id
+
+                    if (shouldToggleCurrent) {
                       togglePlay()
                       return
                     }
 
-                    playSingleTrack(track)
+                    playTrackFromContext(track, favoritesPlaylist)
                   }}
                   onToggleFavorite={() => {
                     void removeFavoriteTrack(track.id)
