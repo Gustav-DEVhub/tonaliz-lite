@@ -1,6 +1,7 @@
 import { Heart, PanelRightClose, PanelRightOpen, Pause, Play, Repeat, Shuffle, StepBack, StepForward } from 'lucide-react'
 import { useState } from 'react'
 import { DesktopVolumeControl } from '@/features/player/components/desktop-volume-control'
+import { MarqueeText } from '@/features/player/components/marquee-text'
 import { MobileExpandedPlayer } from '@/features/player/components/mobile-expanded-player'
 import { useFavoritesStore } from '@/features/library/store/use-favorites-store'
 import { usePlayerStore } from '@/features/player/store/use-player-store'
@@ -147,11 +148,11 @@ export function BottomPlayer() {
                   className="size-11 shrink-0 rounded-[0.9rem] object-cover"
                 />
                 <div className="min-w-0 flex-1">
-                  <h2 className="line-clamp-1 font-heading text-[0.98rem] leading-tight text-text-primary">
-                    {currentTrack.name}
+                  <h2 className="font-heading text-[0.98rem] leading-tight text-text-primary">
+                    <MarqueeText text={currentTrack.name} />
                   </h2>
-                  <p className="mt-0.5 line-clamp-1 text-[0.82rem] leading-tight text-text-secondary">
-                    {currentTrack.artistName}
+                  <p className="mt-0.5 text-[0.82rem] leading-tight text-text-secondary">
+                    <MarqueeText text={currentTrack.artistName} duration={12} />
                   </p>
                 </div>
                 <Button

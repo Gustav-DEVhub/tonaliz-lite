@@ -2,6 +2,7 @@ import { ChevronDown, Copy, ExternalLink, GripVertical, Heart, ListMusic, MoreVe
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import type { Playlist, Track, Mood } from '@/entities/track/model/types'
+import { MarqueeText } from '@/features/player/components/marquee-text'
 import { PlayingBars } from '@/features/player/components/playing-bars'
 import type { RepeatMode } from '@/features/player/store/use-player-store'
 import { detectMood } from '@/lib/mood/detect-mood'
@@ -306,13 +307,15 @@ export function MobileExpandedPlayer({
 
                 <div className="pt-5">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h2 className="line-clamp-2 font-heading text-[1.65rem] leading-[1.02] text-text-primary">
-                        {currentTrack.name}
+                    <div className="min-w-0 flex-1">
+                      <h2 className="font-heading text-[1.65rem] leading-[1.02] text-text-primary">
+                        <MarqueeText text={currentTrack.name} duration={16} />
                       </h2>
-                      <div className="mt-2 flex items-center gap-2 text-[0.98rem] text-text-secondary">
+                      <div className="mt-2 flex min-w-0 items-center gap-2 text-[0.98rem] text-text-secondary">
                         <PlayingBars isPlaying={isPlaying} />
-                        <p className="line-clamp-1">{currentTrack.artistName}</p>
+                        <p className="min-w-0 flex-1">
+                          <MarqueeText text={currentTrack.artistName} duration={13} />
+                        </p>
                       </div>
                     </div>
 
@@ -610,15 +613,15 @@ function QueueSheetRow({
         className="size-12 shrink-0 rounded-[0.95rem] object-cover"
       />
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p
+        <div className="flex min-w-0 items-center gap-2">
+          <MarqueeText
+            text={track.name}
+            duration={13}
             className={cn(
-              'line-clamp-1 font-heading text-[0.98rem] leading-tight',
+              'min-w-0 flex-1 font-heading text-[0.98rem] leading-tight',
               isCurrent ? 'text-[var(--mood-accent)]' : 'text-text-primary',
             )}
-          >
-            {track.name}
-          </p>
+          />
           {isCurrent ? <PlayingBars isPlaying={isPlaying} /> : null}
         </div>
         <div className="mt-1 flex items-center gap-2">
