@@ -31,13 +31,13 @@ export async function searchTracks(query: string): Promise<Track[]> {
   })
 
   if (!response.ok) {
-    throw new Error('Jamendo search failed. Please try again in a moment.')
+    throw new Error('We couldn’t load results. Try again.')
   }
 
   const payload = (await response.json()) as JamendoSearchResponse
 
   if (payload.headers?.status === 'failed') {
-    throw new Error(payload.headers.error_message ?? 'Jamendo search failed.')
+    throw new Error(payload.headers.error_message ?? 'We couldn’t load results. Try again.')
   }
 
   return (payload.results ?? [])

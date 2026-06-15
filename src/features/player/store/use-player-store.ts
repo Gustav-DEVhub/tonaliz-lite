@@ -47,6 +47,7 @@ interface PlayerState {
   playNextInQueue: (track: Track) => void
   removeFromQueueAt: (index: number) => void
   clearUpcomingQueue: () => void
+  reorderUpcomingQueue: (newUpcomingTracks: Track[]) => void
   openNowPlayingRail: () => void
   closeDesktopRail: () => void
   toggleNowPlayingRail: () => void
@@ -391,6 +392,25 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
           tracks: [currentTrack],
         },
         queueIndex: 0,
+      }
+    }),
+  reorderUpcomingQueue: (newUpcomingTracks) =>
+    set((state) => {
+      if (!state.queue || !state.currentTrack) {
+        return state
+      }
+
+      const previousTracks = state.queue.tracks.slice(0, state.queueIndex)
+      const currentTrack = state.queue.tracks[state.queueIndex] ?? state.currentTrack
+      const nextTracks = [...previousTracks, currentTrack, ...newUpcomingTracks]
+
+      return {
+        queue: {
+          ...state.queue,
+          trackIds: nextTracks.map((entry) => entry.id),
+          tracks: nextTracks,
+        },
+        queueIndex: previousTracks.length,
       }
     }),
   handlePlaybackCompletion: () => {

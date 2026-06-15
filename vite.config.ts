@@ -70,4 +70,41 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) {
+            return undefined
+          }
+
+          if (id.includes('react-dom') || id.includes('react/')) {
+            return 'react-vendor'
+          }
+
+          if (id.includes('react-router-dom') || id.includes('@remix-run')) {
+            return 'router-vendor'
+          }
+
+          if (id.includes('motion') || id.includes('framer-motion')) {
+            return 'motion-vendor'
+          }
+
+          if (id.includes('@dnd-kit')) {
+            return 'dnd-vendor'
+          }
+
+          if (id.includes('lucide-react')) {
+            return 'icons-vendor'
+          }
+
+          if (id.includes('@radix-ui')) {
+            return 'radix-vendor'
+          }
+
+          return 'vendor'
+        },
+      },
+    },
+  },
 })

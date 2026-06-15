@@ -158,6 +158,7 @@ export function HomePage() {
             description="Your latest listening history stays available locally on this device."
             tracks={recentlyPlayed}
             source="home"
+            hideHeader
             currentTrack={currentTrack}
             isPlaying={isPlaying}
             favoriteTrackIds={favoriteTrackIds}

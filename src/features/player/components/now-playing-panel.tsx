@@ -47,17 +47,19 @@ export function NowPlayingPanel() {
   const navigate = useNavigate()
   const location = useLocation()
   const currentTrack = usePlayerStore((state) => state.currentTrack)
+  const currentTrackId = currentTrack?.id ?? null
   const isOnline = usePlayerStore((state) => state.isOnline)
   const closeDesktopRail = usePlayerStore((state) => state.closeDesktopRail)
   const playNextInQueue = usePlayerStore((state) => state.playNextInQueue)
   const addToQueue = usePlayerStore((state) => state.addToQueue)
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite)
-  const isFavorite = useFavoritesStore((state) => state.isFavorite)
+  const isCurrentFavorite = useFavoritesStore((state) =>
+    currentTrackId ? state.favorites.some((favorite) => favorite.id === currentTrackId) : false,
+  )
 
   const [artistProfile, setArtistProfile] = useState<ArtistProfile | null>(null)
   const [isLoadingArtist, setIsLoadingArtist] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
-  const isCurrentFavorite = currentTrack ? isFavorite(currentTrack.id) : false
 
   useEffect(() => {
     let isActive = true
@@ -145,7 +147,7 @@ export function NowPlayingPanel() {
       <DesktopRailToggle variant="open-button" onClick={closeDesktopRail} />
 
       <div className="w-full lg:h-full lg:min-h-0">
-        <div className="editorial-panel mood-glow group/rail overflow-hidden rounded-[2rem] border-white/8 p-4 lg:flex lg:h-full lg:min-h-0 lg:flex-col xl:p-5">
+        <div className="editorial-panel mood-glow group/rail overflow-hidden rounded-[1.8rem] border-white/8 p-3 lg:flex lg:h-full lg:min-h-0 lg:flex-col xl:p-3.5">
           <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,var(--mood-accent),transparent)]" />
 
           <div className="flex justify-end gap-2 pl-12">
@@ -154,6 +156,10 @@ export function NowPlayingPanel() {
                 track={currentTrack}
                 onPlayNext={playNextInQueue}
                 onAddToQueue={addToQueue}
+                isFavorite={isCurrentFavorite}
+                onToggleFavorite={() => {
+                  void toggleFavorite(currentTrack)
+                }}
                 shareContext={shareContext}
                 triggerTooltipLabel="Actions"
                 triggerClassName="border-white/18 bg-white/8 text-text-primary hover:bg-white/14 hover:text-white"
@@ -165,25 +171,27 @@ export function NowPlayingPanel() {
             </div>
           </div>
 
-          <div className="mt-3 space-y-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:pr-2 scrollbar-subtle">
+          <div className="mt-2 space-y-3 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:pr-2 scrollbar-subtle">
             <button
               type="button"
               onClick={openExpandedPlayer}
               className="w-full text-left transition-transform duration-300 hover:translate-y-[-1px]"
             >
-              <div className="rounded-[1.7rem] border border-white/8 bg-[radial-gradient(circle_at_top,color-mix(in_srgb,var(--mood-accent)_22%,transparent),transparent_58%)] p-3">
+              <div className="rounded-[1.45rem] border border-white/8 bg-[radial-gradient(circle_at_top,color-mix(in_srgb,var(--mood-accent)_22%,transparent),transparent_58%)] p-2.25">
                 <img
                   src={currentTrack.imageUrl}
                   alt={`${currentTrack.name} artwork`}
-                  className="aspect-square max-h-[min(42vh,23rem)] w-full rounded-[1.4rem] object-cover shadow-[0_20px_50px_rgba(0,0,0,0.45)]"
+                  className="aspect-square max-h-[min(36vh,20rem)] w-full rounded-[1.15rem] object-cover shadow-[0_18px_44px_rgba(0,0,0,0.42)]"
                 />
               </div>
             </button>
 
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <h3 className="line-clamp-2 font-heading text-2xl leading-tight text-text-primary">{currentTrack.name}</h3>
-                <p className="mt-1 line-clamp-1 text-sm text-text-secondary">{currentTrack.artistName}</p>
+                <h3 className="line-clamp-2 font-heading text-[1.55rem] leading-[1.08] text-text-primary">
+                  {currentTrack.name}
+                </h3>
+                <p className="mt-0.75 line-clamp-1 text-[0.88rem] text-text-secondary">{currentTrack.artistName}</p>
               </div>
               <div className="flex items-center gap-2 opacity-0 transition-opacity duration-300 group-hover/rail:opacity-100 group-focus-within/rail:opacity-100">
                 <RailIconButton
@@ -219,3 +227,5 @@ export function NowPlayingPanel() {
     </aside>
   )
 }
+
+

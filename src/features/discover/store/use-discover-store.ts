@@ -40,7 +40,7 @@ export const useDiscoverStore = create<DiscoverState>((set) => ({
       set({
         query,
         results: [],
-        error: 'You are offline. Library stays available, but Jamendo search is disabled.',
+        error: 'You’re offline. Search needs an internet connection.',
         isLoading: false,
         lastSearchedQuery: normalizedQuery,
       })
@@ -68,7 +68,7 @@ export const useDiscoverStore = create<DiscoverState>((set) => ({
         query,
         results: [],
         isLoading: false,
-        error: error instanceof Error ? error.message : 'Something went wrong while loading tracks.',
+        error: error instanceof Error ? error.message : 'We couldn’t load results. Try again.',
       })
     }
   },

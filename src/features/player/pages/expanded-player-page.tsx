@@ -55,6 +55,7 @@ export function ExpandedPlayerPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const currentTrack = usePlayerStore((state) => state.currentTrack)
+  const currentTrackId = currentTrack?.id ?? null
   const currentMood = usePlayerStore((state) => state.currentMood)
   const isPlaying = usePlayerStore((state) => state.isPlaying)
   const currentTime = usePlayerStore((state) => state.currentTime)
@@ -76,7 +77,9 @@ export function ExpandedPlayerPage() {
   const removeFromQueueAt = usePlayerStore((state) => state.removeFromQueueAt)
 
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite)
-  const isFavorite = useFavoritesStore((state) => state.isFavorite)
+  const isCurrentFavorite = useFavoritesStore((state) =>
+    currentTrackId ? state.favorites.some((favorite) => favorite.id === currentTrackId) : false,
+  )
 
   const [artistProfile, setArtistProfile] = useState<ArtistProfile | null>(null)
   const [isLoadingArtist, setIsLoadingArtist] = useState(false)
@@ -363,9 +366,9 @@ export function ExpandedPlayerPage() {
             onClick={() => {
               void toggleFavorite(currentTrack)
             }}
-            aria-label={isFavorite(currentTrack.id) ? 'Remove favorite' : 'Add favorite'}
+            aria-label={isCurrentFavorite ? 'Remove favorite' : 'Add favorite'}
           >
-            <Heart className={isFavorite(currentTrack.id) ? 'size-4 fill-current text-primary-soft' : 'size-4'} />
+            <Heart className={isCurrentFavorite ? 'size-4 fill-current text-primary-soft' : 'size-4'} />
           </Button>
 
           <div className="hidden lg:block">
@@ -394,6 +397,10 @@ export function ExpandedPlayerPage() {
             track={currentTrack}
             onPlayNext={playNextInQueue}
             onAddToQueue={addToQueue}
+            isFavorite={isCurrentFavorite}
+            onToggleFavorite={() => {
+              void toggleFavorite(currentTrack)
+            }}
             shareContext={shareContext}
             triggerClassName="border-white/18 bg-white/8 text-text-primary hover:bg-white/14 hover:text-white"
             menuClassName="top-12"
@@ -451,6 +458,10 @@ export function ExpandedPlayerPage() {
               track={currentTrack}
               onPlayNext={playNextInQueue}
               onAddToQueue={addToQueue}
+              isFavorite={isCurrentFavorite}
+              onToggleFavorite={() => {
+                void toggleFavorite(currentTrack)
+              }}
               shareContext={shareContext}
               triggerClassName="border-white/18 bg-white/8 text-text-primary hover:bg-white/14 hover:text-white"
               menuClassName="top-12"

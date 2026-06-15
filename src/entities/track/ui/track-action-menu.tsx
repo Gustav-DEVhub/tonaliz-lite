@@ -1,4 +1,4 @@
-import { ArrowLeft, Copy, ListPlus, MoreHorizontal, PlayCircle, Share2 } from 'lucide-react'
+import { ArrowLeft, Copy, Heart, ListPlus, MoreHorizontal, PlayCircle, Share2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { Track } from '@/entities/track/model/types'
 import { canUseNativeShare, copyTextToClipboard, shareWithNativeSheet } from '@/shared/lib/share'
@@ -14,6 +14,8 @@ interface TrackActionMenuProps {
   track: Track
   onPlayNext?: (track: Track) => void
   onAddToQueue?: (track: Track) => void
+  isFavorite?: boolean
+  onToggleFavorite?: (track: Track) => void
   shareContext?: ShareContextInfo | null
   triggerClassName?: string
   menuClassName?: string
@@ -25,6 +27,8 @@ export function TrackActionMenu({
   track,
   onPlayNext,
   onAddToQueue,
+  isFavorite,
+  onToggleFavorite,
   shareContext,
   triggerClassName,
   menuClassName,
@@ -141,6 +145,16 @@ export function TrackActionMenu({
     closeMenu()
   }
 
+  const handleFavoriteAction = () => {
+    if (!onToggleFavorite) {
+      return
+    }
+
+    onToggleFavorite(track)
+    setActionFeedback(isFavorite ? 'Removed from favorites' : 'Added to favorites')
+    closeMenu()
+  }
+
   const menuItemClassName =
     'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-text-secondary transition-colors hover:bg-white/6 hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-45'
 
@@ -207,6 +221,13 @@ export function TrackActionMenu({
                 >
                   <ListPlus className="size-4" />
                   Add to queue
+                </button>
+              ) : null}
+
+              {onToggleFavorite ? (
+                <button type="button" className={menuItemClassName} onClick={handleFavoriteAction}>
+                  <Heart className={cn('size-4', isFavorite && 'fill-current text-primary-soft')} />
+                  {isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                 </button>
               ) : null}
 

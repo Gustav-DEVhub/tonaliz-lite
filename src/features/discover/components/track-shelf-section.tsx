@@ -14,6 +14,7 @@ export function TrackShelfSection({
   onPlayTrack,
   onOpenArtist,
   onToggleFavorite,
+  hideHeader = false,
   className,
 }: {
   title: string
@@ -26,6 +27,7 @@ export function TrackShelfSection({
   onPlayTrack: (track: Track, queue: Playlist) => void
   onOpenArtist: (track: Track) => void
   onToggleFavorite: (track: Track) => void
+  hideHeader?: boolean
   className?: string
 }) {
   const sectionId = `${source}-${title.toLowerCase().replace(/\s+/g, '-')}`
@@ -33,15 +35,19 @@ export function TrackShelfSection({
 
   return (
     <section className={cn('min-w-0 space-y-3.5', className)}>
-      <div className="flex items-end justify-between gap-4">
-        <div className="space-y-1">
-          <p className="font-heading text-[1.15rem] leading-tight text-text-primary sm:text-2xl">{title}</p>
-          <p className="max-w-2xl text-[0.92rem] leading-5 text-text-secondary sm:text-sm sm:leading-6">{description}</p>
+      {hideHeader ? null : (
+        <div className="flex items-end justify-between gap-4">
+          <div className="space-y-1">
+            <p className="font-heading text-[1.15rem] leading-tight text-text-primary sm:text-2xl">{title}</p>
+            <p className="max-w-2xl text-[0.92rem] leading-5 text-text-secondary sm:text-sm sm:leading-6">
+              {description}
+            </p>
+          </div>
+          <p className="hidden font-mono text-xs uppercase tracking-[0.24em] text-text-muted sm:block">
+            {tracks.length} picks
+          </p>
         </div>
-        <p className="hidden font-mono text-xs uppercase tracking-[0.24em] text-text-muted sm:block">
-          {tracks.length} picks
-        </p>
-      </div>
+      )}
 
       <div className="scrollbar-subtle -mx-3.5 overflow-x-auto overflow-y-hidden px-3.5 pb-2 scroll-px-3.5 [scrollbar-gutter:stable] [scroll-snap-type:x_mandatory] [overscroll-behavior-x:contain] sm:mx-0 sm:px-0 sm:scroll-px-0">
         <div className="flex min-w-max gap-3.5 sm:gap-4">

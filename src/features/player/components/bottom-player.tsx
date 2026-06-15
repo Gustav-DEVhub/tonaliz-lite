@@ -1,19 +1,25 @@
-import { Heart, PanelRightClose, PanelRightOpen, Pause, Play, Repeat, Shuffle, StepBack, StepForward } from 'lucide-react'
-import { useState } from 'react'
+import { Heart, ListMusic, Pause, Play, Repeat, Shuffle, StepBack, StepForward } from 'lucide-react'
+import { Suspense, lazy, useRef, useState } from 'react'
+import { motion } from 'motion/react'
 import { DesktopVolumeControl } from '@/features/player/components/desktop-volume-control'
 import { MarqueeText } from '@/features/player/components/marquee-text'
-import { MobileExpandedPlayer } from '@/features/player/components/mobile-expanded-player'
 import { useFavoritesStore } from '@/features/library/store/use-favorites-store'
 import { usePlayerStore } from '@/features/player/store/use-player-store'
 import { seekAudio } from '@/lib/audio/audio-controller'
-import { moodTheme } from '@/shared/constants/mood-theme'
 import { formatDuration } from '@/shared/lib/utils'
-import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
+
+const MobileExpandedPlayer = lazy(async () =>
+  import('@/features/player/components/mobile-expanded-player').then((module) => ({
+    default: module.MobileExpandedPlayer,
+  })),
+)
 
 export function BottomPlayer() {
   const [isMobileExpandedOpen, setIsMobileExpandedOpen] = useState(false)
+  const didMiniPlayerSwipeRef = useRef(false)
   const currentTrack = usePlayerStore((state) => state.currentTrack)
+  const currentTrackId = currentTrack?.id ?? null
   const isPlaying = usePlayerStore((state) => state.isPlaying)
   const currentTime = usePlayerStore((state) => state.currentTime)
   const duration = usePlayerStore((state) => state.duration)
@@ -27,15 +33,17 @@ export function BottomPlayer() {
   const nextTrack = usePlayerStore((state) => state.nextTrack)
   const previousTrack = usePlayerStore((state) => state.previousTrack)
   const playTrackInCurrentQueue = usePlayerStore((state) => state.playTrackInCurrentQueue)
+  const reorderUpcomingQueue = usePlayerStore((state) => state.reorderUpcomingQueue)
   const seekTo = usePlayerStore((state) => state.seekTo)
   const toggleShuffle = usePlayerStore((state) => state.toggleShuffle)
   const cycleRepeatMode = usePlayerStore((state) => state.cycleRepeatMode)
   const toggleQueueRail = usePlayerStore((state) => state.toggleQueueRail)
 
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite)
-  const isFavorite = useFavoritesStore((state) => state.isFavorite)
+  const isCurrentFavorite = useFavoritesStore((state) =>
+    currentTrackId ? state.favorites.some((favorite) => favorite.id === currentTrackId) : false,
+  )
 
-  const moodToken = moodTheme[currentMood]
   const hasNextTrack =
     Boolean(queue?.tracks[queueIndex + 1]) || Boolean((isShuffleEnabled || repeatMode === 'all') && queue && queue.tracks.length > 1)
   const hasPreviousTrack = Boolean(queue?.tracks[queueIndex - 1]) || repeatMode === 'all'
@@ -67,38 +75,64 @@ export function BottomPlayer() {
       : 'border border-border-subtle'
   const mobileProgress = resolvedDuration > 0 ? Math.min((currentTime / resolvedDuration) * 100, 100) : 0
 
+  const handleMiniPlayerSwipe = (offsetX: number, offsetY: number, velocityX: number) => {
+    const distanceThreshold = 52
+    const velocityThreshold = 280
+    const horizontalDominance = Math.abs(offsetX) > Math.abs(offsetY) * 1.6
+    const isIntentionalSwipe =
+      Math.abs(offsetX) >= distanceThreshold && Math.abs(velocityX) >= velocityThreshold && horizontalDominance
+
+    if (!isIntentionalSwipe) {
+      return
+    }
+
+    didMiniPlayerSwipeRef.current = true
+
+    if (offsetX < 0 && hasNextTrack) {
+      nextTrack()
+      return
+    }
+
+    if (offsetX > 0 && hasPreviousTrack) {
+      previousTrack()
+    }
+  }
+
   return (
     <>
-      <MobileExpandedPlayer
-        open={isMobileExpandedOpen && Boolean(currentTrack)}
-        onClose={() => setIsMobileExpandedOpen(false)}
-        currentTrack={currentTrack}
-        isPlaying={isPlaying}
-        currentTime={currentTime}
-        duration={resolvedDuration}
-        currentMood={currentMood}
-        queue={queue}
-        queueIndex={queueIndex}
-        hasNextTrack={hasNextTrack}
-        hasPreviousTrack={hasPreviousTrack}
-        isShuffleEnabled={isShuffleEnabled}
-        repeatMode={repeatMode}
-        isFavorite={currentTrack ? isFavorite(currentTrack.id) : false}
-        onTogglePlay={togglePlay}
-        onNext={nextTrack}
-        onPrevious={previousTrack}
-        onPlayQueuedTrack={playTrackInCurrentQueue}
-        onToggleShuffle={toggleShuffle}
-        onCycleRepeatMode={cycleRepeatMode}
-        onToggleFavorite={() => {
-          if (!currentTrack) {
-            return
-          }
+      <Suspense fallback={null}>
+        <MobileExpandedPlayer
+          open={isMobileExpandedOpen && Boolean(currentTrack)}
+          onClose={() => setIsMobileExpandedOpen(false)}
+          currentTrack={currentTrack}
+          isPlaying={isPlaying}
+          currentTime={currentTime}
+          duration={resolvedDuration}
+          currentMood={currentMood}
+          queue={queue}
+          queueIndex={queueIndex}
+          hasNextTrack={hasNextTrack}
+          hasPreviousTrack={hasPreviousTrack}
+          isShuffleEnabled={isShuffleEnabled}
+          repeatMode={repeatMode}
+          isFavorite={isCurrentFavorite}
+          onTogglePlay={togglePlay}
+          onNext={nextTrack}
+          onPrevious={previousTrack}
+          onPlayQueuedTrack={playTrackInCurrentQueue}
+          onReorderUpcomingTracks={reorderUpcomingQueue}
+          onToggleShuffle={toggleShuffle}
+          onCycleRepeatMode={cycleRepeatMode}
+          onToggleFavorite={() => {
+            if (!currentTrack) {
+              return
+            }
 
-          void toggleFavorite(currentTrack)
-        }}
-        onSeek={handleSeek}
-      />
+            void toggleFavorite(currentTrack)
+          }}
+          onSeek={handleSeek}
+        />
+      </Suspense>
 
       <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 px-2.5 md:bottom-0 md:px-4 lg:px-6 xl:px-8 2xl:px-10">
       <div className="editorial-panel mood-glow relative w-full overflow-hidden rounded-[1.1rem] border-white/8 px-3 py-2 sm:rounded-[1.35rem] sm:px-4 sm:py-4">
@@ -142,19 +176,40 @@ export function BottomPlayer() {
               }}
               aria-label={`Open expanded player for ${currentTrack.name}`}
             >
-                <img
-                  src={currentTrack.imageUrl}
-                  alt={`${currentTrack.name} artwork`}
-                  className="size-11 shrink-0 rounded-[0.9rem] object-cover"
-                />
-                <div className="min-w-0 flex-1">
-                  <h2 className="font-heading text-[0.98rem] leading-tight text-text-primary">
-                    <MarqueeText text={currentTrack.name} />
-                  </h2>
-                  <p className="mt-0.5 text-[0.82rem] leading-tight text-text-secondary">
-                    <MarqueeText text={currentTrack.artistName} duration={12} />
-                  </p>
-                </div>
+                <motion.div
+                  className="flex min-w-0 flex-1 items-center gap-3 touch-pan-y"
+                  drag="x"
+                  dragDirectionLock
+                  dragElastic={0.16}
+                  dragMomentum={false}
+                  dragConstraints={{ left: 0, right: 0 }}
+                  whileTap={{ scale: 0.992 }}
+                  onClickCapture={(event) => {
+                    if (didMiniPlayerSwipeRef.current) {
+                      event.stopPropagation()
+                      didMiniPlayerSwipeRef.current = false
+                    }
+                  }}
+                  onDragEnd={(_, info) => {
+                    handleMiniPlayerSwipe(info.offset.x, info.offset.y, info.velocity.x)
+                  }}
+                  aria-label="Swipe mini player artwork or title left or right to change track"
+                >
+                  <img
+                    src={currentTrack.imageUrl}
+                    alt={`${currentTrack.name} artwork`}
+                    className="size-11 shrink-0 rounded-[0.9rem] object-cover"
+                    draggable={false}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <h2 className="font-heading text-[0.98rem] leading-tight text-text-primary">
+                      <MarqueeText text={currentTrack.name} />
+                    </h2>
+                    <p className="mt-0.5 text-[0.82rem] leading-tight text-text-secondary">
+                      <MarqueeText text={currentTrack.artistName} duration={12} />
+                    </p>
+                  </div>
+                </motion.div>
                 <Button
                   type="button"
                   size="icon"
@@ -171,47 +226,38 @@ export function BottomPlayer() {
                   type="button"
                   size="icon"
                   variant="secondary"
-                  className="size-9 shrink-0 rounded-full border border-white/8 bg-black/20 text-text-secondary"
+                  className={isCurrentFavorite ? 'size-9 shrink-0 rounded-full border border-primary-soft/30 bg-primary-soft/12 text-primary-soft' : 'size-9 shrink-0 rounded-full border border-white/8 bg-black/20 text-text-secondary'}
                   onClick={(event) => {
                     event.stopPropagation()
-                    nextTrack()
+                    void toggleFavorite(currentTrack)
                   }}
-                  disabled={!hasNextTrack}
+                  aria-label={isCurrentFavorite ? 'Remove favorite' : 'Add favorite'}
                 >
-                  <StepForward className="size-4.5" />
+                  <Heart className={isCurrentFavorite ? 'size-4.5 fill-current' : 'size-4.5'} />
                 </Button>
             </div>
 
-            <div className="hidden grid-cols-[minmax(0,19rem)_minmax(0,1fr)_auto] items-center gap-5 md:grid">
+            <div className="hidden grid-cols-[minmax(0,24rem)_minmax(0,1fr)_auto] items-center gap-4 md:grid lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,28rem)_minmax(0,1fr)_auto]">
               <div className="flex min-w-0 items-center gap-3">
                 <img
                   src={currentTrack.imageUrl}
                   alt={`${currentTrack.name} artwork`}
-                  className="size-[4rem] rounded-[1rem] object-cover"
+                  className="size-[3.8rem] rounded-[0.95rem] object-cover"
                 />
 
                 <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge
-                      className="border-transparent"
-                      style={{
-                        background: `color-mix(in srgb, ${moodToken.background} 72%, rgba(0,0,0,0.45))`,
-                        color: moodToken.text,
-                      }}
-                    >
-                      {moodToken.label}
-                    </Badge>
-                    <Badge>{queue?.source ?? 'discover'}</Badge>
-                  </div>
-                  <h2 className="mt-2 line-clamp-1 font-heading text-xl leading-tight text-text-primary">
+                  <h2
+                    className="line-clamp-1 font-heading text-[1.06rem] leading-tight text-text-primary lg:text-[1.12rem]"
+                    title={currentTrack.name.length > 44 ? currentTrack.name : undefined}
+                  >
                     {currentTrack.name}
                   </h2>
-                  <p className="mt-1 line-clamp-1 text-sm text-text-secondary">{currentTrack.artistName}</p>
+                  <p className="mt-1 line-clamp-1 text-[0.92rem] text-text-secondary">{currentTrack.artistName}</p>
                 </div>
               </div>
 
-              <div className="mx-auto flex w-full max-w-xl flex-col gap-2">
-                <div className="flex items-center justify-center gap-2">
+              <div className="mx-auto flex w-full max-w-[34rem] flex-col gap-1.5 xl:max-w-[36rem]">
+                <div className="flex items-center justify-center gap-1.5">
                   <Button
                     type="button"
                     size="icon"
@@ -269,7 +315,7 @@ export function BottomPlayer() {
                   </Button>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between gap-3 text-[0.72rem] text-text-muted">
                     <span>{formatDuration(currentTime)}</span>
                     <span>{formatDuration(resolvedDuration)}</span>
@@ -278,37 +324,21 @@ export function BottomPlayer() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <Button
                   type="button"
                   size="icon"
                   variant="ghost"
                   className={
                     desktopRightRailMode === 'queue'
-                      ? 'border border-[color:var(--mood-accent)]/40 bg-[color:var(--mood-accent)]/12 text-text-primary'
-                      : 'border border-border-subtle'
+                      ? 'size-10 scale-[1.03] border border-[color:var(--mood-accent)]/45 bg-[color:var(--mood-accent)]/18 text-text-primary shadow-[0_12px_28px_color-mix(in_srgb,var(--mood-accent)_18%,transparent)] transition-all duration-200 ease-out'
+                      : 'size-10 border border-border-subtle bg-white/6 text-text-secondary transition-all duration-200 ease-out hover:scale-[1.02] hover:bg-white/10 hover:text-text-primary active:scale-[0.97]'
                   }
                   onClick={toggleQueueRail}
                   aria-pressed={desktopRightRailMode === 'queue'}
                   aria-label={desktopRightRailMode === 'queue' ? 'Close queue' : 'Open queue'}
                 >
-                  {desktopRightRailMode === 'queue' ? (
-                    <PanelRightClose className="size-4" />
-                  ) : (
-                    <PanelRightOpen className="size-4" />
-                  )}
-                </Button>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="border border-border-subtle"
-                  onClick={() => {
-                    void toggleFavorite(currentTrack)
-                  }}
-                  aria-label={isFavorite(currentTrack.id) ? 'Remove favorite' : 'Add favorite'}
-                >
-                  <Heart className={isFavorite(currentTrack.id) ? 'size-4 fill-current text-primary-soft' : 'size-4'} />
+                  <ListMusic className="size-4.5" />
                 </Button>
 
                 <DesktopVolumeControl />

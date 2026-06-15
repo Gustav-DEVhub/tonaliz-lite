@@ -101,6 +101,16 @@ input {
   backdrop-filter: blur(22px);
 }
 
+@media (min-width: 1024px) {
+  .editorial-panel-flat-desktop {
+    background: none;
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+}
+
 .track-card-surface {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 40%),
