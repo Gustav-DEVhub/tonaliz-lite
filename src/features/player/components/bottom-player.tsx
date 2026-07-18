@@ -7,6 +7,7 @@ import { useFavoritesStore } from '@/features/library/store/use-favorites-store'
 import { usePlayerStore } from '@/features/player/store/use-player-store'
 import { seekAudio } from '@/lib/audio/audio-controller'
 import { formatDuration } from '@/shared/lib/utils'
+import { useToastStore } from '@/shared/store/use-toast-store'
 import { Button } from '@/shared/ui/button'
 
 const MobileExpandedPlayer = lazy(async () =>
@@ -40,6 +41,7 @@ export function BottomPlayer() {
   const toggleQueueRail = usePlayerStore((state) => state.toggleQueueRail)
 
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite)
+  const showToast = useToastStore((state) => state.showToast)
   const isCurrentFavorite = useFavoritesStore((state) =>
     currentTrackId ? state.favorites.some((favorite) => favorite.id === currentTrackId) : false,
   )
@@ -52,6 +54,15 @@ export function BottomPlayer() {
   const handleSeek = (nextTime: number) => {
     seekAudio(nextTime)
     seekTo(nextTime)
+  }
+
+  const handleToggleCurrentFavorite = () => {
+    if (!currentTrack) {
+      return
+    }
+
+    void toggleFavorite(currentTrack)
+    showToast({ title: isCurrentFavorite ? 'Removed from Music I Like' : 'Added to Music I Like', variant: 'success' })
   }
 
   const progressSlider = (
@@ -229,7 +240,7 @@ export function BottomPlayer() {
                   className={isCurrentFavorite ? 'size-9 shrink-0 rounded-full border border-primary-soft/30 bg-primary-soft/12 text-primary-soft' : 'size-9 shrink-0 rounded-full border border-white/8 bg-black/20 text-text-secondary'}
                   onClick={(event) => {
                     event.stopPropagation()
-                    void toggleFavorite(currentTrack)
+                    handleToggleCurrentFavorite()
                   }}
                   aria-label={isCurrentFavorite ? 'Remove favorite' : 'Add favorite'}
                 >

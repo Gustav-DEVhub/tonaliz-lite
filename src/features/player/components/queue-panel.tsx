@@ -1,5 +1,5 @@
 import { X } from 'lucide-react'
-import { useEffect, useRef, useState, type ButtonHTMLAttributes } from 'react'
+import { useMemo, useRef, type ButtonHTMLAttributes } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import {
   DndContext,
@@ -19,6 +19,7 @@ import { QueueTrackRow } from '@/features/player/components/queue-track-row'
 import { usePlayerStore } from '@/features/player/store/use-player-store'
 import { copyTextToClipboard } from '@/shared/lib/share'
 import { cn } from '@/shared/lib/utils'
+import { useToastStore } from '@/shared/store/use-toast-store'
 import { Button } from '@/shared/ui/button'
 
 interface DesktopQueueDragHandleProps {
@@ -42,9 +43,11 @@ export function QueuePanel() {
   const closeQueueRailAndRestore = usePlayerStore((state) => state.closeQueueRailAndRestore)
   const removeFromQueueAt = usePlayerStore((state) => state.removeFromQueueAt)
   const reorderUpcomingQueue = usePlayerStore((state) => state.reorderUpcomingQueue)
+  const favorites = useFavoritesStore((state) => state.favorites)
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite)
+  const favoriteTrackIds = useMemo(() => new Set(favorites.map((favorite) => favorite.id)), [favorites])
+  const showToast = useToastStore((state) => state.showToast)
 
-  const [feedback, setFeedback] = useState<string | null>(null)
   const isQueueDragActiveRef = useRef(false)
   const shouldReduceMotion = useReducedMotion()
   const railTransition = shouldReduceMotion
@@ -60,20 +63,6 @@ export function QueuePanel() {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   )
-
-  useEffect(() => {
-    if (!feedback) {
-      return
-    }
-
-    const timeout = setTimeout(() => {
-      setFeedback(null)
-    }, 1800)
-
-    return () => {
-      clearTimeout(timeout)
-    }
-  }, [feedback])
 
   if (!queue || !currentTrack) {
     return null
@@ -130,15 +119,15 @@ export function QueuePanel() {
 
   const shareTrack = async (shareUrl: string | null | undefined) => {
     if (!shareUrl) {
-      setFeedback('No link available')
+      showToast({ title: 'No link available', variant: 'warning' })
       return
     }
 
     try {
       await copyTextToClipboard(shareUrl)
-      setFeedback('Song link copied')
+      showToast({ title: 'Link copied', variant: 'success' })
     } catch {
-      setFeedback('Copy failed')
+      showToast({ title: "Couldn't share", variant: 'error' })
     }
   }
 
@@ -198,10 +187,12 @@ export function QueuePanel() {
                   track={currentQueueTrack}
                   isCurrent
                   isPlaying={isPlaying}
+                  isFavorite={favoriteTrackIds.has(currentQueueTrack.id)}
                   onPlay={togglePlay}
                   onFavorite={() => {
+                    const wasFavorite = favoriteTrackIds.has(currentQueueTrack.id)
                     void toggleFavorite(currentQueueTrack)
-                    setFeedback('Saved to favorites')
+                    showToast({ title: wasFavorite ? 'Removed from Music I Like' : 'Added to Music I Like', variant: 'success' })
                   }}
                   onGoToArtist={() => {
                     goToArtist(currentQueueTrack)
@@ -241,17 +232,19 @@ export function QueuePanel() {
                             key={sortableId}
                             id={sortableId}
                             track={track}
+                            isFavorite={favoriteTrackIds.has(track.id)}
                             isReorderDisabled={isShuffleEnabled}
                             onPlay={() => {
                               playTrackInCurrentQueue(absoluteIndex)
                             }}
                             onRemove={() => {
                               removeFromQueueAt(absoluteIndex)
-                              setFeedback('Removed from queue')
+                              showToast({ title: 'Removed from queue', variant: 'success' })
                             }}
                             onFavorite={() => {
+                              const wasFavorite = favoriteTrackIds.has(track.id)
                               void toggleFavorite(track)
-                              setFeedback('Saved to favorites')
+                              showToast({ title: wasFavorite ? 'Removed from Music I Like' : 'Added to Music I Like', variant: 'success' })
                             }}
                             onGoToArtist={() => {
                               goToArtist(track)
@@ -269,11 +262,6 @@ export function QueuePanel() {
             </div>
           </div>
 
-          {feedback ? (
-            <div className="pointer-events-none mt-3 rounded-full border border-white/10 bg-black/78 px-3 py-1 text-[0.68rem] font-mono uppercase tracking-[0.18em] text-text-primary">
-              {feedback}
-            </div>
-          ) : null}
         </motion.div>
       </div>
     </aside>
@@ -282,6 +270,7 @@ export function QueuePanel() {
 function SortableQueuePanelRow({
   id,
   track,
+  isFavorite,
   isReorderDisabled,
   onPlay,
   onRemove,
@@ -291,6 +280,7 @@ function SortableQueuePanelRow({
 }: {
   id: string
   track: Track
+  isFavorite: boolean
   isReorderDisabled: boolean
   onPlay: () => void
   onRemove: () => void
@@ -326,6 +316,7 @@ function SortableQueuePanelRow({
         track={track}
         isCurrent={false}
         isPlaying={false}
+        isFavorite={isFavorite}
         canRemove
         showReorderHandle
         isReorderDisabled={isReorderDisabled}

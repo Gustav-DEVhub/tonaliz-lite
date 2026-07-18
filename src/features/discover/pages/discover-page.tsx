@@ -4,17 +4,20 @@ import { createPlaylist } from '@/entities/track/lib/create-playlist'
 import { getArtistRouteTarget } from '@/features/artist/lib/artist-route'
 import { TrackListRow } from '@/entities/track/ui/track-list-row'
 import { DiscoverHero } from '@/features/discover/components/discover-hero'
+import { useBrowsePullToRefresh } from '@/features/discover/hooks/use-browse-pull-to-refresh'
 import { TrackShelfSection } from '@/features/discover/components/track-shelf-section'
 import { TrackGridSkeleton } from '@/features/discover/components/track-grid-skeleton'
 import { TrackListSkeleton } from '@/features/discover/components/track-list-skeleton'
 import { getDiscoverExplorationConfigs } from '@/features/discover/lib/exploration-shelves'
 import { useTrackShelves } from '@/features/discover/hooks/use-track-shelves'
+import { useBrowseSessionStore } from '@/features/discover/store/use-browse-session-store'
 import { useDiscoverStore } from '@/features/discover/store/use-discover-store'
 import { useFavoritesStore } from '@/features/library/store/use-favorites-store'
 import { usePlayerStore } from '@/features/player/store/use-player-store'
 import { Button } from '@/shared/ui/button'
 import { EmptyState } from '@/shared/ui/empty-state'
 import { StatusPanel } from '@/shared/ui/status-panel'
+import { cn } from '@/shared/lib/utils'
 
 export function DiscoverPage() {
   const navigate = useNavigate()
@@ -38,9 +41,13 @@ export function DiscoverPage() {
   const playNextInQueue = usePlayerStore((state) => state.playNextInQueue)
   const addToQueue = usePlayerStore((state) => state.addToQueue)
   const isOnline = usePlayerStore((state) => state.isOnline)
+  const browseRevision = useBrowseSessionStore((state) => state.browseRevision)
+  const refreshBrowse = useBrowseSessionStore((state) => state.refreshBrowse)
   const favoriteTrackIds = useMemo(() => new Set(favorites.map((favorite) => favorite.id)), [favorites])
 
   const [draftQuery, setDraftQuery] = useState(query)
+  const [activeDiscoverFilter, setActiveDiscoverFilter] = useState<string | null>(null)
+  const [activeDiscoverFilterKey, setActiveDiscoverFilterKey] = useState<string | null>(null)
 
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search)
@@ -71,8 +78,23 @@ export function DiscoverPage() {
   }
 
   const hasActiveSearchState = Boolean(lastSearchedQuery || query.trim() || draftQuery.trim() || results.length || isLoading || error)
-  const explorationConfigs = useMemo(() => getDiscoverExplorationConfigs(), [])
-  const explorationShelves = useTrackShelves(explorationConfigs, !hasActiveSearchState && isOnline)
+  const explorationConfigs = useMemo(() => {
+    const configs = getDiscoverExplorationConfigs(new Date(), browseRevision)
+
+    if (!activeDiscoverFilter) {
+      return configs
+    }
+
+    const matchingConfig = configs.find((config) => config.query === activeDiscoverFilter)
+    return matchingConfig
+      ? [matchingConfig, ...configs.filter((config) => config.id !== matchingConfig.id)]
+      : configs
+  }, [activeDiscoverFilter, browseRevision])
+  const explorationShelves = useTrackShelves(explorationConfigs, !hasActiveSearchState && isOnline, browseRevision)
+  const pullToRefresh = useBrowsePullToRefresh({
+    enabled: !hasActiveSearchState && isOnline,
+    onRefresh: refreshBrowse,
+  })
   const resolvedQuery = lastSearchedQuery || draftQuery || query
   const searchShareUrl =
     typeof window !== 'undefined' && resolvedQuery
@@ -95,12 +117,39 @@ export function DiscoverPage() {
   }
 
   return (
-    <div className="space-y-5 lg:flex lg:min-h-full lg:flex-col lg:space-y-5">
+    <div className="space-y-5 lg:flex lg:min-h-full lg:flex-col lg:space-y-5" {...pullToRefresh.bind}>
+      <div className="sticky top-[5.65rem] z-20 -mt-2 flex justify-center md:hidden">
+        <div
+          className="pointer-events-none inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/55 px-3 py-1 text-[0.68rem] font-mono uppercase tracking-[0.16em] text-text-secondary backdrop-blur-md transition-all duration-200"
+          style={{
+            opacity: pullToRefresh.pullDistance > 0 || pullToRefresh.isRefreshing ? 1 : 0,
+            transform: `translateY(${Math.min(pullToRefresh.pullDistance * 0.35, 22)}px)`,
+          }}
+        >
+          <span
+            className={cn(
+              'browse-refresh-spinner',
+              pullToRefresh.isRefreshing && 'browse-refresh-spinner--active',
+              pullToRefresh.isReadyToRefresh && !pullToRefresh.isRefreshing && 'browse-refresh-spinner--ready',
+            )}
+            aria-hidden="true"
+          />
+          {pullToRefresh.isRefreshing
+            ? 'Refreshing'
+            : pullToRefresh.isReadyToRefresh
+              ? 'Release to refresh'
+              : 'Pull to refresh'}
+        </div>
+      </div>
+
       <DiscoverHero
         disabled={!isOnline || isLoading}
-        onSuggestionSelect={(value) => {
-          void handleSearch(value)
+        onSuggestionSelect={(value, key) => {
+          const nextKey = activeDiscoverFilterKey === key ? null : key
+          setActiveDiscoverFilterKey(nextKey)
+          setActiveDiscoverFilter(nextKey ? value : null)
         }}
+        activeSuggestionKey={activeDiscoverFilterKey}
       />
 
       {!isOnline ? (
@@ -277,6 +326,7 @@ export function DiscoverPage() {
                 key={shelf.id}
                 title={shelf.title}
                 description={shelf.description}
+                shelfId={shelf.id}
                 tracks={shelf.tracks}
                 source="discover"
                 currentTrack={currentTrack}
@@ -298,6 +348,8 @@ export function DiscoverPage() {
                 onToggleFavorite={(track) => {
                   void toggleFavorite(track)
                 }}
+                onPlayNext={playNextInQueue}
+                onAddToQueue={addToQueue}
               />
             ))}
           </div>

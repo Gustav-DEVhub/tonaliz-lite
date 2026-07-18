@@ -1,11 +1,15 @@
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { createPlaylist } from '@/entities/track/lib/create-playlist'
 import type { Playlist, PlaylistSource, Track } from '@/entities/track/model/types'
 import { TrackCard } from '@/entities/track/ui/track-card'
+import { ShelfCollectionActionMenu } from '@/features/discover/components/shelf-collection-action-menu'
 import { cn } from '@/shared/lib/utils'
 
 export function TrackShelfSection({
   title,
   description,
+  shelfId,
   tracks,
   source,
   currentTrack,
@@ -14,11 +18,14 @@ export function TrackShelfSection({
   onPlayTrack,
   onOpenArtist,
   onToggleFavorite,
+  onPlayNext,
+  onAddToQueue,
   hideHeader = false,
   className,
 }: {
   title: string
   description: string
+  shelfId?: string
   tracks: Track[]
   source: PlaylistSource
   currentTrack: Track | null
@@ -27,11 +34,58 @@ export function TrackShelfSection({
   onPlayTrack: (track: Track, queue: Playlist) => void
   onOpenArtist: (track: Track) => void
   onToggleFavorite: (track: Track) => void
+  onPlayNext: (track: Track) => void
+  onAddToQueue: (track: Track) => void
   hideHeader?: boolean
   className?: string
 }) {
+  const scrollerRef = useRef<HTMLDivElement | null>(null)
+  const [canScrollPrevious, setCanScrollPrevious] = useState(false)
+  const [canScrollNext, setCanScrollNext] = useState(false)
   const sectionId = `${source}-${title.toLowerCase().replace(/\s+/g, '-')}`
   const sectionPlaylist = createPlaylist(title, source, tracks)
+  const shelfCollectionSource = source === 'home' || source === 'discover' ? source : null
+  const canSaveShelfCollection = Boolean(shelfId && shelfCollectionSource)
+
+  const updateScrollControls = () => {
+    const scroller = scrollerRef.current
+
+    if (!scroller) {
+      return
+    }
+
+    setCanScrollPrevious(scroller.scrollLeft > 8)
+    setCanScrollNext(scroller.scrollLeft + scroller.clientWidth < scroller.scrollWidth - 8)
+  }
+
+  useEffect(() => {
+    updateScrollControls()
+
+    const scroller = scrollerRef.current
+    if (!scroller) {
+      return
+    }
+
+    const resizeObserver = new ResizeObserver(updateScrollControls)
+    resizeObserver.observe(scroller)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [tracks.length])
+
+  const scrollByPage = (direction: 'previous' | 'next') => {
+    const scroller = scrollerRef.current
+
+    if (!scroller) {
+      return
+    }
+
+    scroller.scrollBy({
+      left: direction === 'next' ? scroller.clientWidth * 0.78 : -scroller.clientWidth * 0.78,
+      behavior: 'smooth',
+    })
+  }
 
   return (
     <section className={cn('min-w-0 space-y-3.5', className)}>
@@ -43,21 +97,71 @@ export function TrackShelfSection({
               {description}
             </p>
           </div>
-          <p className="hidden font-mono text-xs uppercase tracking-[0.24em] text-text-muted sm:block">
-            {tracks.length} picks
-          </p>
+          <div className="flex items-center gap-2">
+            {(canScrollPrevious || canScrollNext) ? (
+              <div className="hidden items-center gap-2 lg:flex">
+                <button
+                  type="button"
+                  className="inline-flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-text-secondary transition-colors hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-35"
+                  onClick={() => scrollByPage('previous')}
+                  disabled={!canScrollPrevious}
+                  aria-label="Scroll previous"
+                >
+                  <ChevronLeft className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-text-secondary transition-colors hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-35"
+                  onClick={() => scrollByPage('next')}
+                  disabled={!canScrollNext}
+                  aria-label="Scroll next"
+                >
+                  <ChevronRight className="size-4" />
+                </button>
+              </div>
+            ) : null}
+            <p className="hidden font-mono text-xs uppercase tracking-[0.24em] text-text-muted lg:block">
+              {tracks.length} picks
+            </p>
+            {canSaveShelfCollection && shelfId ? (
+              <ShelfCollectionActionMenu
+                shelfId={shelfId}
+                title={title}
+                description={description}
+                tracks={tracks}
+                source={shelfCollectionSource ?? 'home'}
+              />
+            ) : null}
+          </div>
         </div>
       )}
 
-      <div className="scrollbar-subtle -mx-3.5 overflow-x-auto overflow-y-hidden px-3.5 pb-2 scroll-px-3.5 [scrollbar-gutter:stable] [scroll-snap-type:x_mandatory] [overscroll-behavior-x:contain] sm:mx-0 sm:px-0 sm:scroll-px-0">
-        <div className="flex min-w-max gap-3.5 sm:gap-4">
+      <div
+        ref={scrollerRef}
+        className="scrollbar-none -mx-3.5 overflow-x-auto overflow-y-hidden px-3.5 pb-2 scroll-px-3.5 [scroll-snap-type:x_mandatory] [overscroll-behavior-x:contain] sm:mx-0 sm:px-0 sm:scroll-px-0 lg:scrollbar-subtle lg:pb-3 lg:[scrollbar-gutter:stable]"
+        onScroll={updateScrollControls}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowLeft') {
+            event.preventDefault()
+            scrollByPage('previous')
+          }
+
+          if (event.key === 'ArrowRight') {
+            event.preventDefault()
+            scrollByPage('next')
+          }
+        }}
+        tabIndex={0}
+        aria-label={`${title} carousel`}
+      >
+        <div className="flex min-w-max gap-3.5 sm:gap-4 lg:gap-5">
           {tracks.map((track) => {
             const isCurrent = currentTrack?.id === track.id
 
             return (
               <div
                 key={`${sectionId}-${track.id}`}
-                className="w-[min(15rem,calc(100vw-5.75rem))] shrink-0 snap-start sm:w-[15.5rem] lg:w-[16rem]"
+                className="w-[72vw] max-w-[18rem] shrink-0 snap-start sm:w-[17rem] lg:w-[12rem] lg:max-w-none xl:w-[13rem] 2xl:w-[13.5rem]"
               >
                 <TrackCard
                   track={track}
@@ -73,6 +177,8 @@ export function TrackShelfSection({
                   onToggleFavorite={() => {
                     onToggleFavorite(track)
                   }}
+                  onPlayNext={onPlayNext}
+                  onAddToQueue={onAddToQueue}
                 />
               </div>
             )

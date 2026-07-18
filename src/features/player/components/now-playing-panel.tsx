@@ -11,6 +11,7 @@ import { usePlayerStore } from '@/features/player/store/use-player-store'
 import { getArtistProfile } from '@/lib/jamendo/artist-service'
 import { copyTextToClipboard } from '@/shared/lib/share'
 import { cn } from '@/shared/lib/utils'
+import { useToastStore } from '@/shared/store/use-toast-store'
 
 function RailIconButton({
   label,
@@ -53,13 +54,13 @@ export function NowPlayingPanel() {
   const playNextInQueue = usePlayerStore((state) => state.playNextInQueue)
   const addToQueue = usePlayerStore((state) => state.addToQueue)
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite)
+  const showToast = useToastStore((state) => state.showToast)
   const isCurrentFavorite = useFavoritesStore((state) =>
     currentTrackId ? state.favorites.some((favorite) => favorite.id === currentTrackId) : false,
   )
 
   const [artistProfile, setArtistProfile] = useState<ArtistProfile | null>(null)
   const [isLoadingArtist, setIsLoadingArtist] = useState(false)
-  const [feedback, setFeedback] = useState<string | null>(null)
 
   useEffect(() => {
     let isActive = true
@@ -93,20 +94,6 @@ export function NowPlayingPanel() {
     }
   }, [currentTrack])
 
-  useEffect(() => {
-    if (!feedback) {
-      return
-    }
-
-    const timeout = setTimeout(() => {
-      setFeedback(null)
-    }, 1800)
-
-    return () => {
-      clearTimeout(timeout)
-    }
-  }, [feedback])
-
   if (!currentTrack) {
     return null
   }
@@ -130,16 +117,21 @@ export function NowPlayingPanel() {
 
   const shareTrack = async () => {
     if (!currentTrack.shareUrl) {
-      setFeedback('No link available')
+      showToast({ title: 'No link available', variant: 'warning' })
       return
     }
 
     try {
       await copyTextToClipboard(currentTrack.shareUrl)
-      setFeedback('Song link copied')
+      showToast({ title: 'Link copied', variant: 'success' })
     } catch {
-      setFeedback('Copy failed')
+      showToast({ title: "Couldn't share", variant: 'error' })
     }
+  }
+
+  const handleToggleFavorite = () => {
+    void toggleFavorite(currentTrack)
+    showToast({ title: isCurrentFavorite ? 'Removed from Music I Like' : 'Added to Music I Like', variant: 'success' })
   }
 
   return (
@@ -197,13 +189,11 @@ export function NowPlayingPanel() {
                 <RailIconButton
                   label={isCurrentFavorite ? 'Remove favorite' : 'Add favorite'}
                   isActive={isCurrentFavorite}
-                  onClick={() => {
-                    void toggleFavorite(currentTrack)
-                  }}
+                  onClick={handleToggleFavorite}
                 >
                   <Heart className={isCurrentFavorite ? 'size-4 fill-current' : 'size-4'} />
                 </RailIconButton>
-                <RailIconButton label="Copy song link" onClick={() => void shareTrack()}>
+                <RailIconButton label="Share" onClick={() => void shareTrack()}>
                   <Share2 className="size-4" />
                 </RailIconButton>
               </div>
@@ -216,11 +206,6 @@ export function NowPlayingPanel() {
               isOnline={isOnline}
               compact
             />
-            {feedback ? (
-              <div className="pointer-events-none rounded-full border border-white/10 bg-black/78 px-3 py-1 text-[0.68rem] font-mono uppercase tracking-[0.18em] text-text-primary">
-                {feedback}
-              </div>
-            ) : null}
           </div>
         </div>
       </div>

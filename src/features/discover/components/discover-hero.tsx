@@ -1,19 +1,22 @@
 import { Button } from '@/shared/ui/button'
+import { cn } from '@/shared/lib/utils'
 
 const discoverChips = [
-  { label: 'New', query: 'dream pop' },
-  { label: 'Moods', query: 'ambient' },
-  { label: 'Genres', query: 'indie rock' },
-  { label: 'Focus', query: 'lofi' },
+  { key: 'chip-new', label: 'New', query: 'dream pop' },
+  { key: 'chip-moods', label: 'Moods', query: 'ambient' },
+  { key: 'chip-genres', label: 'Genres', query: 'indie rock' },
+  { key: 'chip-focus', label: 'Focus', query: 'lofi' },
 ] as const
 
 const recommendedSearches = ['dream pop', 'ambient', 'indie rock', 'lofi']
 
 export function DiscoverHero({
   onSuggestionSelect,
+  activeSuggestionKey = null,
   disabled = false,
 }: {
-  onSuggestionSelect: (value: string) => void
+  onSuggestionSelect: (value: string, key: string) => void
+  activeSuggestionKey?: string | null
   disabled?: boolean
 }) {
   return (
@@ -26,9 +29,15 @@ export function DiscoverHero({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-8 rounded-full border border-white/12 bg-black/20 px-3 font-mono text-[0.72rem] tracking-[0.08em] text-text-primary lg:h-7 lg:border-white/10 lg:px-2.5 lg:text-[0.68rem]"
+              className={cn(
+                'h-8 rounded-full border px-3 font-mono text-[0.72rem] tracking-[0.08em] lg:h-7 lg:px-2.5 lg:text-[0.68rem]',
+                activeSuggestionKey === chip.key
+                  ? 'border-primary/35 bg-primary/12 text-text-primary'
+                  : 'border-white/12 bg-black/20 text-text-primary lg:border-white/10',
+              )}
               disabled={disabled}
-              onClick={() => onSuggestionSelect(chip.query)}
+              aria-pressed={activeSuggestionKey === chip.key}
+              onClick={() => onSuggestionSelect(chip.query, chip.key)}
             >
               {chip.label}
             </Button>
@@ -42,9 +51,15 @@ export function DiscoverHero({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-8 rounded-full border border-border-subtle bg-black/15 px-3 text-[0.78rem] text-text-secondary hover:text-text-primary lg:h-7 lg:px-2.5 lg:text-[0.72rem]"
+              className={cn(
+                'h-8 rounded-full border px-3 text-[0.78rem] hover:text-text-primary lg:h-7 lg:px-2.5 lg:text-[0.72rem]',
+                activeSuggestionKey === `suggestion-${suggestion}`
+                  ? 'border-primary/35 bg-primary/12 text-text-primary'
+                  : 'border-border-subtle bg-black/15 text-text-secondary',
+              )}
               disabled={disabled}
-              onClick={() => onSuggestionSelect(suggestion)}
+              aria-pressed={activeSuggestionKey === `suggestion-${suggestion}`}
+              onClick={() => onSuggestionSelect(suggestion, `suggestion-${suggestion}`)}
             >
               {suggestion}
             </Button>

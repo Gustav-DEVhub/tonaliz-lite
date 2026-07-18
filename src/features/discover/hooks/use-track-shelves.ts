@@ -14,8 +14,8 @@ function getShelfCacheKey(configs: TrackShelfConfig[]) {
   return configs.map((config) => `${config.id}:${config.query}:${config.title}`).join('|')
 }
 
-export function useTrackShelves(configs: TrackShelfConfig[], enabled = true) {
-  const cacheKey = getShelfCacheKey(configs)
+export function useTrackShelves(configs: TrackShelfConfig[], enabled = true, revision = 0) {
+  const cacheKey = `${getShelfCacheKey(configs)}::${revision}`
   const cachedShelves = shelfCache.get(cacheKey)
   const [state, setState] = useState<TrackShelvesState>({
     shelves: cachedShelves ?? [],
@@ -63,7 +63,7 @@ export function useTrackShelves(configs: TrackShelfConfig[], enabled = true) {
       }))
     })
 
-    void loadTrackShelves(configs)
+    void loadTrackShelves(configs, revision)
       .then((shelves) => {
         if (isCancelled) {
           return
@@ -94,7 +94,7 @@ export function useTrackShelves(configs: TrackShelfConfig[], enabled = true) {
     return () => {
       isCancelled = true
     }
-  }, [cacheKey, configs, enabled])
+  }, [cacheKey, configs, enabled, revision])
 
   if (!enabled) {
     return {

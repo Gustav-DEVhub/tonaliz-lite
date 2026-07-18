@@ -1,6 +1,8 @@
-import { ChevronDown, Copy, ExternalLink, GripVertical, Heart, ListMusic, MoreVertical, Pause, Play, Repeat, Shuffle, StepBack, StepForward } from 'lucide-react'
-import { useEffect, useRef, useState, type ButtonHTMLAttributes } from 'react'
-import { AnimatePresence, motion, useDragControls, useReducedMotion } from 'motion/react'
+import { ChevronDown, ExternalLink, GripVertical, Heart, ListMusic, MoreVertical, Pause, Play, Repeat, Share2, Shuffle, StepBack, StepForward } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { AnimatePresence, motion, useDragControls, useMotionValue, useReducedMotion, useTransform } from 'motion/react'
+import { animate } from 'motion'
 import {
   DndContext,
   KeyboardSensor,
@@ -13,12 +15,18 @@ import {
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { Playlist, Track, Mood } from '@/entities/track/model/types'
+import { MobileTrackActionSheet } from '@/entities/track/ui/mobile-track-action-sheet'
+import { useMobileLongPress } from '@/entities/track/ui/use-mobile-long-press'
+import { getArtistRouteTarget } from '@/features/artist/lib/artist-route'
+import { AddToPlaylistDialog } from '@/features/library/components/add-to-playlist-dialog'
+import { useFavoritesStore } from '@/features/library/store/use-favorites-store'
 import { MarqueeText } from '@/features/player/components/marquee-text'
 import { PlayingBars } from '@/features/player/components/playing-bars'
 import type { RepeatMode } from '@/features/player/store/use-player-store'
 import { moodTheme } from '@/shared/constants/mood-theme'
-import { copyTextToClipboard } from '@/shared/lib/share'
+import { canUseNativeShare, copyTextToClipboard, shareWithNativeSheet } from '@/shared/lib/share'
 import { cn, formatDuration } from '@/shared/lib/utils'
+import { useToastStore } from '@/shared/store/use-toast-store'
 import { Button } from '@/shared/ui/button'
 
 type QueueSheetMode = 'peek' | 'expanded'
@@ -79,14 +87,19 @@ export function MobileExpandedPlayer({
   onToggleFavorite,
   onSeek,
 }: MobileExpandedPlayerProps) {
+  const navigate = useNavigate()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isQueueSheetOpen, setIsQueueSheetOpen] = useState(false)
   const [queueSheetMode, setQueueSheetMode] = useState<QueueSheetMode>('peek')
-  const [feedback, setFeedback] = useState<string | null>(null)
+  const [isAddToPlaylistDialogOpen, setIsAddToPlaylistDialogOpen] = useState(false)
+  const [isArtworkSwipeCommitting, setIsArtworkSwipeCommitting] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const queueSheetDragControls = useDragControls()
   const isQueueReorderingRef = useRef(false)
   const shouldReduceMotion = useReducedMotion()
+  const showToast = useToastStore((state) => state.showToast)
+  const favorites = useFavoritesStore((state) => state.favorites)
+  const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite)
   const queueReorderSensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -102,23 +115,44 @@ export function MobileExpandedPlayer({
   const trackShareUrl = currentTrack?.shareUrl ?? null
   const trackJamendoUrl = trackShareUrl?.includes('jamendo.com') ? trackShareUrl : null
   const artistJamendoUrl = currentTrack?.artistShareUrl ?? null
-  const overlaySpring = shouldReduceMotion
-    ? { duration: 0.12, ease: 'easeOut' as const }
-    : { type: 'spring' as const, stiffness: 380, damping: 34, mass: 0.68 }
-  const queueSheetSpring = shouldReduceMotion
-    ? { duration: 0.14, ease: 'easeOut' as const }
-    : { type: 'spring' as const, stiffness: 420, damping: 38, mass: 0.62 }
-  const subtleSpring = shouldReduceMotion
-    ? { duration: 0.1, ease: 'easeOut' as const }
-    : { type: 'spring' as const, stiffness: 460, damping: 36, mass: 0.55 }
+  const favoriteTrackIds = useMemo(() => new Set(favorites.map((favorite) => favorite.id)), [favorites])
+  const motionFactor = shouldReduceMotion ? 0.65 : 1
+  const overlaySpring = {
+    type: 'spring' as const,
+    stiffness: 360 + 80 * motionFactor,
+    damping: 34,
+    mass: 0.68,
+  }
+  const queueSheetSpring = {
+    type: 'spring' as const,
+    stiffness: 400 + 60 * motionFactor,
+    damping: 36,
+    mass: 0.62,
+  }
+  const subtleSpring = {
+    type: 'spring' as const,
+    stiffness: 420 + 70 * motionFactor,
+    damping: 34,
+    mass: 0.56,
+  }
+  const artworkDragX = useMotionValue(0)
+  const artworkPreviewDistance = typeof window === 'undefined' ? 176 : Math.min(Math.max(window.innerWidth * 0.36, 146), 216)
+  const previewOpacityLeft = useTransform(artworkDragX, [0, artworkPreviewDistance * 0.82], [0, 0.92])
+  const previewOpacityRight = useTransform(artworkDragX, [-artworkPreviewDistance * 0.82, 0], [0.92, 0])
+  const previousPreviewOffset = useTransform(artworkDragX, [0, artworkPreviewDistance], ['-100%', '-42%'])
+  const nextPreviewOffset = useTransform(artworkDragX, [-artworkPreviewDistance, 0], ['42%', '100%'])
 
   const resolveSwipeThreshold = () => {
     if (typeof window === 'undefined') {
-      return 56
+      return 112
     }
 
-    return Math.min(Math.max(window.innerWidth * 0.1, 48), 96)
+    return Math.min(Math.max(window.innerWidth * 0.24, 96), 150)
   }
+
+  useEffect(() => {
+    artworkDragX.set(0)
+  }, [artworkDragX, currentTrack?.id])
 
   useEffect(() => {
     if (!isMenuOpen) {
@@ -151,25 +185,12 @@ export function MobileExpandedPlayer({
     }
   }, [isMenuOpen, isQueueSheetOpen])
 
-  useEffect(() => {
-    if (!feedback) {
-      return
-    }
-
-    const timeout = setTimeout(() => {
-      setFeedback(null)
-    }, 1800)
-
-    return () => {
-      clearTimeout(timeout)
-    }
-  }, [feedback])
-
   const closeMenu = () => {
     setIsMenuOpen(false)
   }
 
   const closeQueueSheet = () => {
+    isQueueReorderingRef.current = false
     setIsQueueSheetOpen(false)
     setQueueSheetMode('peek')
   }
@@ -182,28 +203,52 @@ export function MobileExpandedPlayer({
   const handleCloseOverlay = () => {
     setIsMenuOpen(false)
     closeQueueSheet()
-    setFeedback(null)
     onClose()
   }
 
-  const handleCopyTrackLink = async () => {
+  const openArtistFromTrack = (track: Track) => {
+    const target = getArtistRouteTarget(track)
+    handleCloseOverlay()
+    navigate(
+      {
+        pathname: target.pathname,
+        search: target.search,
+      },
+      { state: target.state },
+    )
+  }
+
+  const handleShareTrack = async () => {
     if (!trackShareUrl) {
       return
     }
 
     try {
+      if (currentTrack && canUseNativeShare()) {
+        const didShare = await shareWithNativeSheet({
+          title: `${currentTrack.name} - ${currentTrack.artistName}`,
+          text: `Listen to ${currentTrack.name} by ${currentTrack.artistName}`,
+          url: trackShareUrl,
+        })
+
+        if (didShare) {
+          closeMenu()
+          return
+        }
+      }
+
       await copyTextToClipboard(trackShareUrl)
-      setFeedback('Copied')
+      showToast({ title: 'Link copied', variant: 'success' })
       closeMenu()
     } catch {
-      setFeedback('Copy failed')
+      showToast({ title: 'Couldn’t share', variant: 'error' })
       closeMenu()
     }
   }
 
   const handleToggleFavorite = () => {
     onToggleFavorite()
-    setFeedback(isFavorite ? 'Removed from favorites' : 'Added to favorites')
+    showToast({ title: isFavorite ? 'Removed from Music I Like' : 'Added to Music I Like', variant: 'success' })
     closeMenu()
   }
 
@@ -216,6 +261,13 @@ export function MobileExpandedPlayer({
 
   const queueTracks = queue?.tracks ?? [currentTrack]
   const currentQueueTrack = queue?.tracks[queueIndex] ?? currentTrack
+  const canPreviewAdjacentTrack = !isShuffleEnabled && queueTracks.length > 1
+  const previousPreviewTrack = canPreviewAdjacentTrack
+    ? queueTracks[queueIndex - 1] ?? (repeatMode === 'all' ? queueTracks[queueTracks.length - 1] : null)
+    : null
+  const nextPreviewTrack = canPreviewAdjacentTrack
+    ? queueTracks[queueIndex + 1] ?? (repeatMode === 'all' ? queueTracks[0] : null)
+    : null
   const previousTracks = queueTracks.slice(0, queueIndex).map((track, index) => ({ track, absoluteIndex: index }))
   const upcomingTracks = queueTracks
     .slice(queueIndex + 1)
@@ -228,7 +280,6 @@ export function MobileExpandedPlayer({
         sortableId: `${queue?.id ?? 'session'}-up-next-${absoluteIndex}-${track.id}`,
       }
     })
-
   const handleMobileQueueDragEnd = (event: DragEndEvent) => {
     window.setTimeout(() => {
       isQueueReorderingRef.current = false
@@ -265,6 +316,7 @@ export function MobileExpandedPlayer({
   }
 
   return (
+    <>
     <AnimatePresence>
       {open ? (
         <>
@@ -273,25 +325,29 @@ export function MobileExpandedPlayer({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={shouldReduceMotion ? { duration: 0.08 } : { duration: 0.2, ease: 'easeOut' }}
+            transition={{ duration: 0.18 * motionFactor, ease: 'easeOut' }}
             onClick={handleCloseOverlay}
           />
 
           <motion.div
-            drag="y"
+            drag={isQueueSheetOpen ? false : 'y'}
             dragDirectionLock
             dragElastic={0.08}
             dragMomentum={false}
             dragConstraints={{ top: 0, bottom: 0 }}
             onDragEnd={(_, info) => {
+              if (isQueueSheetOpen || isQueueReorderingRef.current) {
+                return
+              }
+
               if (info.offset.y > 90 || info.velocity.y > 600) {
                 handleCloseOverlay()
               }
             }}
             className="fixed inset-0 z-[90] md:hidden"
-            initial={{ opacity: 0, y: 80 }}
+            initial={{ opacity: 0, y: 56 * motionFactor, scale: 0.992 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 80 }}
+            exit={{ opacity: 0, y: 52 * motionFactor, scale: 0.992 }}
             transition={overlaySpring}
           >
             <div
@@ -355,7 +411,21 @@ export function MobileExpandedPlayer({
 
                         <button type="button" className={menuItemClassName} onClick={handleToggleFavorite}>
                           <Heart className={cn('size-4', isFavorite && 'fill-current text-primary-soft')} />
-                          {isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                          {isFavorite ? 'Remove from Music I Like' : 'Add to Music I Like'}
+                        </button>
+
+                        <button
+                          type="button"
+                          className={menuItemClassName}
+                          onClick={(event) => {
+                            event.preventDefault()
+                            event.stopPropagation()
+                            closeMenu()
+                            setIsAddToPlaylistDialogOpen(true)
+                          }}
+                        >
+                          <ListMusic className="size-4" />
+                          Add to playlist
                         </button>
 
                         {trackShareUrl ? (
@@ -363,22 +433,17 @@ export function MobileExpandedPlayer({
                             type="button"
                             className={menuItemClassName}
                             onClick={() => {
-                              void handleCopyTrackLink()
+                              void handleShareTrack()
                             }}
                           >
-                            <Copy className="size-4" />
-                            Copy track link
+                            <Share2 className="size-4" />
+                            Share
                           </button>
                         ) : null}
                       </div>
                     </div>
                   ) : null}
 
-                  {feedback ? (
-                    <div className="pointer-events-none absolute right-0 top-12 z-10 mt-2 rounded-full border border-white/10 bg-black/82 px-3 py-1 text-[0.68rem] font-mono uppercase tracking-[0.18em] text-text-primary shadow-[0_12px_28px_rgba(0,0,0,0.28)]">
-                      {feedback}
-                    </div>
-                  ) : null}
                 </div>
               </div>
 
@@ -389,40 +454,101 @@ export function MobileExpandedPlayer({
                     style={{ background: `color-mix(in srgb, ${moodToken.accent} 30%, transparent)` }}
                   />
                   <motion.div
-                    key={currentTrack.id}
-                    className="relative w-full max-w-[min(78vw,21rem)] touch-none"
-                    drag="x"
-                    dragDirectionLock
-                    dragElastic={0.18}
-                    dragMomentum={false}
-                    dragConstraints={{ left: 0, right: 0 }}
-                    whileTap={{ scale: 0.985 }}
-                    initial={{ scale: shouldReduceMotion ? 1 : 0.96, opacity: shouldReduceMotion ? 1 : 0.88 }}
+                    className="relative aspect-square w-full max-w-[min(78vw,21rem)] touch-none overflow-hidden rounded-[1.9rem]"
+                    whileTap={isArtworkSwipeCommitting ? undefined : { scale: 0.992 }}
+                    initial={{ scale: 0.975, opacity: 0.9 }}
                     animate={{ scale: 1, opacity: 1, x: 0 }}
                     transition={subtleSpring}
-                    onDragEnd={(_, info) => {
-                      const threshold = resolveSwipeThreshold()
-                      const velocityThreshold = 650
-                      const shouldGoNext = info.offset.x < -threshold || info.velocity.x < -velocityThreshold
-                      const shouldGoPrevious = info.offset.x > threshold || info.velocity.x > velocityThreshold
-
-                      if (shouldGoNext && hasNextTrack) {
-                        onNext()
-                        return
-                      }
-
-                      if (shouldGoPrevious && hasPreviousTrack) {
-                        onPrevious()
-                      }
-                    }}
                     aria-label="Swipe album artwork left or right to change track"
                   >
-                    <img
+                    {previousPreviewTrack ? (
+                      <motion.img
+                        src={previousPreviewTrack.imageUrl}
+                        alt={`${previousPreviewTrack.name} preview artwork`}
+                        className="absolute inset-0 z-[1] aspect-square w-full rounded-[1.9rem] object-cover opacity-0 shadow-[0_20px_54px_rgba(0,0,0,0.42)]"
+                        style={{
+                          x: previousPreviewOffset,
+                          opacity: previewOpacityLeft,
+                        }}
+                        draggable={false}
+                      />
+                    ) : null}
+
+                    <motion.img
+                      key={currentTrack.id}
                       src={currentTrack.imageUrl}
                       alt={`${currentTrack.name} artwork`}
-                      className="aspect-square w-full rounded-[1.9rem] object-cover shadow-[0_24px_60px_rgba(0,0,0,0.5)]"
+                      className="relative z-[2] aspect-square w-full rounded-[1.9rem] object-cover shadow-[0_24px_60px_rgba(0,0,0,0.5)]"
+                      drag={isArtworkSwipeCommitting ? false : 'x'}
+                      dragDirectionLock
+                      dragElastic={0.1}
+                      dragMomentum={false}
+                      dragConstraints={{ left: 0, right: 0 }}
+                      style={{ x: artworkDragX }}
+                      onDragEnd={(_, info) => {
+                        if (isArtworkSwipeCommitting) {
+                          return
+                        }
+
+                        const threshold = resolveSwipeThreshold()
+                        const velocityThreshold = 1150
+                        const shouldGoNext =
+                          info.offset.x < -threshold || (info.offset.x < -threshold * 0.8 && info.velocity.x < -velocityThreshold)
+                        const shouldGoPrevious =
+                          info.offset.x > threshold || (info.offset.x > threshold * 0.8 && info.velocity.x > velocityThreshold)
+
+                        if (shouldGoNext && hasNextTrack) {
+                          setIsArtworkSwipeCommitting(true)
+                          void animate(artworkDragX, -artworkPreviewDistance * 1.08, {
+                            type: 'spring',
+                            stiffness: shouldReduceMotion ? 520 : 620,
+                            damping: 38,
+                          mass: 0.48,
+                        }).then(() => {
+                          setIsArtworkSwipeCommitting(false)
+                          artworkDragX.set(0)
+                          onNext()
+                        })
+                        return
+                        }
+
+                        if (shouldGoPrevious && hasPreviousTrack) {
+                          setIsArtworkSwipeCommitting(true)
+                          void animate(artworkDragX, artworkPreviewDistance * 1.08, {
+                            type: 'spring',
+                            stiffness: shouldReduceMotion ? 520 : 620,
+                            damping: 38,
+                          mass: 0.48,
+                        }).then(() => {
+                          setIsArtworkSwipeCommitting(false)
+                          artworkDragX.set(0)
+                          onPrevious()
+                        })
+                        return
+                        }
+
+                        void animate(artworkDragX, 0, {
+                          type: 'spring',
+                          stiffness: shouldReduceMotion ? 520 : 640,
+                          damping: 36,
+                          mass: 0.5,
+                        })
+                      }}
                       draggable={false}
                     />
+
+                    {nextPreviewTrack ? (
+                      <motion.img
+                        src={nextPreviewTrack.imageUrl}
+                        alt={`${nextPreviewTrack.name} preview artwork`}
+                        className="absolute inset-0 z-[1] aspect-square w-full rounded-[1.9rem] object-cover opacity-0 shadow-[0_20px_54px_rgba(0,0,0,0.42)]"
+                        style={{
+                          x: nextPreviewOffset,
+                          opacity: previewOpacityRight,
+                        }}
+                        draggable={false}
+                      />
+                    ) : null}
                   </motion.div>
                 </div>
 
@@ -586,20 +712,25 @@ export function MobileExpandedPlayer({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.16, ease: 'easeOut' }}
-                    onClick={closeQueueSheet}
+                    transition={{ duration: 0.16 * motionFactor, ease: 'easeOut' }}
+                    onClick={() => {
+                      if (isQueueReorderingRef.current) {
+                        return
+                      }
+
+                      closeQueueSheet()
+                    }}
                     aria-label="Close queue sheet"
                   />
 
                   <motion.div
-                    className="absolute inset-x-0 bottom-0 z-[95] overflow-hidden rounded-t-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(19,15,25,0.98),rgba(10,8,16,0.98))] shadow-[0_-18px_48px_rgba(0,0,0,0.34)]"
-                    initial={{ opacity: 0, y: 60, height: '58dvh' }}
+                    className="absolute inset-x-0 bottom-0 z-[95] h-[84dvh] overflow-hidden rounded-t-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(19,15,25,0.98),rgba(10,8,16,0.98))] shadow-[0_-18px_48px_rgba(0,0,0,0.34)]"
+                    initial={{ opacity: 0, y: `calc(26dvh + ${48 * motionFactor}px)` }}
                     animate={{
                       opacity: 1,
-                      y: 0,
-                      height: queueSheetMode === 'peek' ? '58dvh' : '84dvh',
+                      y: queueSheetMode === 'peek' ? '26dvh' : 0,
                     }}
-                    exit={{ opacity: 0, y: 60 }}
+                    exit={{ opacity: 0, y: `calc(26dvh + ${48 * motionFactor}px)` }}
                     transition={queueSheetSpring}
                     drag="y"
                     dragListener={false}
@@ -671,7 +802,12 @@ export function MobileExpandedPlayer({
                             track={currentQueueTrack}
                             isCurrent
                             isPlaying={isPlaying}
+                            isFavorite={favoriteTrackIds.has(currentQueueTrack.id)}
                             onPlay={onTogglePlay}
+                            onToggleFavorite={(trackToToggle) => {
+                              void toggleFavorite(trackToToggle)
+                            }}
+                            onViewArtist={openArtistFromTrack}
                           />
                         </section>
 
@@ -707,6 +843,11 @@ export function MobileExpandedPlayer({
                                       onClick={() => {
                                         onPlayQueuedTrack(absoluteIndex)
                                       }}
+                                      isFavorite={favoriteTrackIds.has(track.id)}
+                                      onToggleFavorite={(trackToToggle) => {
+                                        void toggleFavorite(trackToToggle)
+                                      }}
+                                      onViewArtist={openArtistFromTrack}
                                     />
                                   ))}
                                 </div>
@@ -728,6 +869,11 @@ export function MobileExpandedPlayer({
                                 onClick={() => {
                                   onPlayQueuedTrack(absoluteIndex)
                                 }}
+                                isFavorite={favoriteTrackIds.has(track.id)}
+                                onToggleFavorite={(trackToToggle) => {
+                                  void toggleFavorite(trackToToggle)
+                                }}
+                                onViewArtist={openArtistFromTrack}
                               />
                             ))}
                           </section>
@@ -742,6 +888,12 @@ export function MobileExpandedPlayer({
         </>
       ) : null}
     </AnimatePresence>
+    <AddToPlaylistDialog
+      track={currentTrack}
+      open={isAddToPlaylistDialogOpen}
+      onOpenChange={setIsAddToPlaylistDialogOpen}
+    />
+    </>
   )
 }
 
@@ -749,21 +901,31 @@ function QueueSheetRow({
   track,
   isCurrent = false,
   isPlaying = false,
+  isFavorite = false,
   showReorderHandle = false,
   isReorderDisabled = false,
   dragHandleProps,
   onPlay,
   onClick,
+  onToggleFavorite,
+  onViewArtist,
 }: {
   track: Track
   isCurrent?: boolean
   isPlaying?: boolean
+  isFavorite?: boolean
   showReorderHandle?: boolean
   isReorderDisabled?: boolean
   dragHandleProps?: QueueDragHandleProps
   onPlay?: () => void
   onClick?: () => void
+  onToggleFavorite?: (track: Track) => void
+  onViewArtist?: (track: Track) => void
 }) {
+  const [isMobileActionSheetOpen, setIsMobileActionSheetOpen] = useState(false)
+  const longPressBind = useMobileLongPress(() => {
+    setIsMobileActionSheetOpen(true)
+  })
   const content = (
     <>
       <img
@@ -843,8 +1005,17 @@ function QueueSheetRow({
 
   if (!onClick) {
     return (
-      <div className="flex items-center gap-3 rounded-[1.2rem] border border-white/10 bg-white/6 px-3 py-3">
+      <div className="flex items-center gap-3 rounded-[1.2rem] border border-white/10 bg-white/6 px-3 py-3" {...longPressBind}>
         {content}
+        <MobileTrackActionSheet
+          open={isMobileActionSheetOpen}
+          track={track}
+          isFavorite={isFavorite}
+          onOpenChange={setIsMobileActionSheetOpen}
+          onPlay={onPlay}
+          onToggleFavorite={onToggleFavorite}
+          onViewArtist={onViewArtist}
+        />
       </div>
     )
   }
@@ -853,6 +1024,7 @@ function QueueSheetRow({
     <div
       role="button"
       tabIndex={0}
+      {...longPressBind}
       className="flex w-full items-center gap-3 rounded-[1.2rem] border border-white/10 bg-white/6 px-3 py-3 text-left transition-colors hover:bg-white/10"
       onClick={onClick}
       onKeyDown={(event) => {
@@ -863,6 +1035,15 @@ function QueueSheetRow({
       }}
     >
       {content}
+      <MobileTrackActionSheet
+        open={isMobileActionSheetOpen}
+        track={track}
+        isFavorite={isFavorite}
+        onOpenChange={setIsMobileActionSheetOpen}
+        onPlay={onPlay}
+        onToggleFavorite={onToggleFavorite}
+        onViewArtist={onViewArtist}
+      />
     </div>
   )
 }
@@ -873,12 +1054,18 @@ function SortableQueueSheetRow({
   isReorderDisabled,
   onPlay,
   onClick,
+  isFavorite,
+  onToggleFavorite,
+  onViewArtist,
 }: {
   id: string
   track: Track
   isReorderDisabled: boolean
   onPlay: () => void
   onClick: () => void
+  isFavorite: boolean
+  onToggleFavorite: (track: Track) => void
+  onViewArtist: (track: Track) => void
 }) {
   const { attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
@@ -909,6 +1096,9 @@ function SortableQueueSheetRow({
         }}
         onPlay={onPlay}
         onClick={onClick}
+        isFavorite={isFavorite}
+        onToggleFavorite={onToggleFavorite}
+        onViewArtist={onViewArtist}
       />
     </div>
   )

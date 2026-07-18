@@ -2,10 +2,16 @@ import { useEffect, useEffectEvent } from 'react'
 import { AudioSyncBridge } from '@/app/bootstrap/audio-sync-bridge'
 import { RecentlyPlayedBridge } from '@/app/bootstrap/recently-played-bridge'
 import { useFavoritesStore } from '@/features/library/store/use-favorites-store'
+import { usePlaylistsStore } from '@/features/library/store/use-playlists-store'
+import { useSavedCollectionsStore } from '@/features/library/store/use-saved-collections-store'
+import { useSavedTracksStore } from '@/features/library/store/use-saved-tracks-store'
 import { usePlayerStore } from '@/features/player/store/use-player-store'
 
 export function AppBootstrap() {
   const loadFavorites = useFavoritesStore((state) => state.loadFavorites)
+  const loadPlaylists = usePlaylistsStore((state) => state.loadPlaylists)
+  const loadSavedCollections = useSavedCollectionsStore((state) => state.loadSavedCollections)
+  const loadSavedTracks = useSavedTracksStore((state) => state.loadSavedTracks)
   const setOnlineStatus = usePlayerStore((state) => state.setOnlineStatus)
 
   const handleOnlineStatus = useEffectEvent(() => {
@@ -13,8 +19,15 @@ export function AppBootstrap() {
   })
 
   useEffect(() => {
-    void loadFavorites()
-    handleOnlineStatus()
+    void (async () => {
+      await loadFavorites()
+      await loadSavedTracks(useFavoritesStore.getState().favorites)
+      await Promise.all([
+        loadPlaylists(),
+        loadSavedCollections(),
+      ])
+      handleOnlineStatus()
+    })()
 
     window.addEventListener('online', handleOnlineStatus)
     window.addEventListener('offline', handleOnlineStatus)
@@ -23,7 +36,7 @@ export function AppBootstrap() {
       window.removeEventListener('online', handleOnlineStatus)
       window.removeEventListener('offline', handleOnlineStatus)
     }
-  }, [loadFavorites])
+  }, [loadFavorites, loadPlaylists, loadSavedCollections, loadSavedTracks])
 
   return (
     <>

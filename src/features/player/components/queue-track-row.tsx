@@ -1,5 +1,6 @@
-import { Copy, GripVertical, Heart, MoreHorizontal, Move, Pause, Play, Trash2, UserRound } from 'lucide-react'
-import { useEffect, useRef, useState, type ButtonHTMLAttributes } from 'react'
+import { GripVertical, Heart, MoreHorizontal, Move, Pause, Play, Share2, Trash2, UserRound } from 'lucide-react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import type { Track } from '@/entities/track/model/types'
 import { cn, formatDuration } from '@/shared/lib/utils'
 import { Badge } from '@/shared/ui/badge'
@@ -12,19 +13,48 @@ interface QueueRowDragHandleProps {
 
 function QueueRowMenu({
   canRemove,
+  isFavorite,
   onRemove,
   onFavorite,
   onGoToArtist,
   onShare,
 }: {
   canRemove: boolean
+  isFavorite: boolean
   onRemove?: () => void
   onFavorite: () => void
   onGoToArtist: () => void
   onShare: () => void
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [menuPosition, setMenuPosition] = useState<CSSProperties | null>(null)
   const rootRef = useRef<HTMLDivElement | null>(null)
+  const buttonRef = useRef<HTMLButtonElement | null>(null)
+  const menuRef = useRef<HTMLDivElement | null>(null)
+
+  const updateMenuPosition = useCallback(() => {
+    const button = buttonRef.current
+
+    if (!button) {
+      return
+    }
+
+    const rect = button.getBoundingClientRect()
+    const menuWidth = 208
+    const menuHeight = canRemove ? 216 : 168
+    const viewportPadding = 12
+    const left = Math.min(
+      Math.max(viewportPadding, rect.right - menuWidth),
+      window.innerWidth - menuWidth - viewportPadding,
+    )
+    const preferredTop = rect.bottom + 8
+    const top =
+      preferredTop + menuHeight > window.innerHeight - viewportPadding
+        ? Math.max(viewportPadding, rect.top - menuHeight - 8)
+        : preferredTop
+
+    setMenuPosition({ left, top, width: menuWidth })
+  }, [canRemove])
 
   useEffect(() => {
     if (!isOpen) {
@@ -32,7 +62,9 @@ function QueueRowMenu({
     }
 
     const handlePointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node
+
+      if (!rootRef.current?.contains(target) && !menuRef.current?.contains(target)) {
         setIsOpen(false)
       }
     }
@@ -45,12 +77,22 @@ function QueueRowMenu({
 
     window.addEventListener('mousedown', handlePointerDown)
     window.addEventListener('keydown', handleEscape)
+    window.addEventListener('resize', updateMenuPosition)
+    window.addEventListener('scroll', updateMenuPosition, true)
 
     return () => {
       window.removeEventListener('mousedown', handlePointerDown)
       window.removeEventListener('keydown', handleEscape)
+      window.removeEventListener('resize', updateMenuPosition)
+      window.removeEventListener('scroll', updateMenuPosition, true)
     }
-  }, [isOpen])
+  }, [isOpen, updateMenuPosition])
+
+  useLayoutEffect(() => {
+    if (isOpen) {
+      updateMenuPosition()
+    }
+  }, [isOpen, updateMenuPosition])
 
   const menuItemClassName =
     'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-text-secondary transition-colors hover:bg-white/6 hover:text-text-primary'
@@ -58,8 +100,13 @@ function QueueRowMenu({
   return (
     <div ref={rootRef} className="relative">
       <button
+        ref={buttonRef}
         type="button"
-        className="rounded-full border border-border-subtle p-2 text-text-muted transition-colors hover:text-text-primary"
+        className={cn(
+          'rounded-full border border-border-subtle p-2 text-text-muted transition-all duration-200 ease-out hover:text-text-primary',
+          'lg:pointer-events-none lg:scale-95 lg:opacity-0 lg:group-hover/queue-row:pointer-events-auto lg:group-hover/queue-row:scale-100 lg:group-hover/queue-row:opacity-100 lg:group-focus-within/queue-row:pointer-events-auto lg:group-focus-within/queue-row:scale-100 lg:group-focus-within/queue-row:opacity-100',
+          isOpen && 'lg:pointer-events-auto lg:scale-100 lg:opacity-100',
+        )}
         onClick={(event) => {
           event.stopPropagation()
           setIsOpen((open) => !open)
@@ -70,8 +117,13 @@ function QueueRowMenu({
         <MoreHorizontal className="size-4" />
       </button>
 
-      {isOpen ? (
-        <div className="editorial-panel absolute right-0 top-11 z-30 w-52 rounded-[1.1rem] p-2 shadow-[0_18px_46px_rgba(0,0,0,0.34)]">
+      {isOpen && menuPosition
+        ? createPortal(
+        <div
+          ref={menuRef}
+          className="editorial-panel fixed z-[120] rounded-[1.1rem] p-2 shadow-[0_18px_46px_rgba(0,0,0,0.34)]"
+          style={menuPosition}
+        >
           {canRemove && onRemove ? (
             <button
               type="button"
@@ -93,8 +145,8 @@ function QueueRowMenu({
               setIsOpen(false)
             }}
           >
-            <Heart className="size-4" />
-            Save to favorites
+            <Heart className={cn('size-4', isFavorite && 'fill-current text-primary-soft')} />
+            {isFavorite ? 'Remove from Music I Like' : 'Add to Music I Like'}
           </button>
           <button
             type="button"
@@ -115,11 +167,13 @@ function QueueRowMenu({
               setIsOpen(false)
             }}
           >
-            <Copy className="size-4" />
-            Share song link
+            <Share2 className="size-4" />
+            Share
           </button>
-        </div>
-      ) : null}
+        </div>,
+        document.body,
+      )
+        : null}
     </div>
   )
 }
@@ -128,6 +182,7 @@ export function QueueTrackRow({
   track,
   isCurrent,
   isPlaying,
+  isFavorite = false,
   canRemove = false,
   showReorderHandle = false,
   isReorderDisabled = false,
@@ -141,6 +196,7 @@ export function QueueTrackRow({
   track: Track
   isCurrent: boolean
   isPlaying: boolean
+  isFavorite?: boolean
   canRemove?: boolean
   showReorderHandle?: boolean
   isReorderDisabled?: boolean
@@ -156,7 +212,7 @@ export function QueueTrackRow({
   return (
     <div
       className={cn(
-        'flex items-center gap-3 rounded-[1.3rem] border px-3 py-3 transition-colors',
+        'group/queue-row flex items-center gap-3 rounded-[1.3rem] border px-3 py-3 transition-colors',
         isCurrent ? 'border-white/12 bg-white/6' : 'border-transparent bg-black/10 hover:border-white/10 hover:bg-white/5',
       )}
     >
@@ -225,7 +281,9 @@ export function QueueTrackRow({
         </p>
       </div>
 
-      <span className="hidden text-xs text-text-muted sm:block">{formatDuration(track.duration)}</span>
+      <span className="hidden text-xs text-text-muted transition-opacity duration-200 lg:group-hover/queue-row:opacity-35 lg:group-focus-within/queue-row:opacity-35 sm:block">
+        {formatDuration(track.duration)}
+      </span>
 
       {showReorderHandle && !isDesktopTitleDragActive ? (
         <button
@@ -257,6 +315,7 @@ export function QueueTrackRow({
 
       <QueueRowMenu
         canRemove={canRemove}
+        isFavorite={isFavorite}
         onRemove={onRemove}
         onFavorite={onFavorite}
         onGoToArtist={onGoToArtist}

@@ -21,22 +21,70 @@ export function SearchBar({
 }) {
   const hasQuery = query.trim().length > 0
 
-  return (
-    <form
-      className={compact ? className : `editorial-panel rounded-[1.6rem] p-3 ${className ?? ''}`}
-      onSubmit={(event) => {
-        event.preventDefault()
-        onSubmit()
-      }}
-    >
-      <div className={`flex ${compact ? 'items-center gap-2' : 'flex-col gap-3 sm:flex-row'}`}>
+  if (compact) {
+    return (
+      <form
+        className={`flex h-11 min-w-0 items-center gap-2 rounded-full border border-border-subtle bg-black/18 px-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)] transition-colors focus-within:border-primary ${className ?? ''}`}
+        onSubmit={(event) => {
+          event.preventDefault()
+          onSubmit()
+        }}
+      >
         <div className="relative min-w-0 flex-1">
           <Input
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
             placeholder="Search tracks, artists, or moods"
             aria-label="Search tracks, artists, or moods"
-            className={compact ? 'h-10 flex-1 rounded-[1.2rem] bg-black/18 pr-10 pl-3 text-sm' : 'h-[3.25rem] flex-1 pr-11'}
+            className="h-9 rounded-none border-transparent bg-transparent px-0 pr-8 text-sm shadow-none focus:border-transparent"
+          />
+          {hasQuery ? (
+            <button
+              type="button"
+              className="absolute right-0 top-1/2 inline-flex -translate-y-1/2 items-center justify-center rounded-full text-text-muted transition-colors hover:text-text-primary"
+              onClick={() => {
+                if (onClear) {
+                  onClear()
+                  return
+                }
+
+                onQueryChange('')
+              }}
+              aria-label="Clear search"
+            >
+              <X className="size-4" />
+            </button>
+          ) : null}
+        </div>
+        <Button
+          type="submit"
+          size="icon"
+          className="size-9 shrink-0 rounded-full"
+          disabled={disabled || !hasQuery}
+          aria-label="Search"
+        >
+          <Search className="size-4" />
+        </Button>
+      </form>
+    )
+  }
+
+  return (
+    <form
+      className={`editorial-panel rounded-[1.6rem] p-3 ${className ?? ''}`}
+      onSubmit={(event) => {
+        event.preventDefault()
+        onSubmit()
+      }}
+    >
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="relative min-w-0 flex-1">
+          <Input
+            value={query}
+            onChange={(event) => onQueryChange(event.target.value)}
+            placeholder="Search tracks, artists, or moods"
+            aria-label="Search tracks, artists, or moods"
+            className="h-[3.25rem] flex-1 pr-11"
           />
           {hasQuery ? (
             <button
@@ -52,19 +100,19 @@ export function SearchBar({
               }}
               aria-label="Clear search"
             >
-              <X className={compact ? 'size-4' : 'size-4.5'} />
+              <X className="size-4.5" />
             </button>
           ) : null}
         </div>
         <Button
           type="submit"
-          size={compact ? 'icon' : 'lg'}
-          className={compact ? 'size-10 shrink-0 rounded-full' : 'sm:min-w-36'}
+          size="lg"
+          className="sm:min-w-36"
           disabled={disabled || !hasQuery}
           aria-label="Search"
         >
           <Search className="size-4" />
-          {compact ? null : 'Search'}
+          Search
         </Button>
       </div>
     </form>

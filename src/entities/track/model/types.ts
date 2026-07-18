@@ -39,3 +39,47 @@ export interface Favorite extends Track {
   savedAt: string
   updatedAt: string
 }
+
+export interface SavedTrack {
+  trackId: string
+  track: Track
+  isManual: boolean
+  isFavorite: boolean
+  manualSavedAt?: number
+  favoritedAt?: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface UserPlaylist {
+  id: string
+  title: string
+  description: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface UserPlaylistTrack {
+  id: string
+  playlistId: string
+  trackId: string
+  track: Track
+  addedAt: string
+  position: number
+}
+
+export type SavedCollectionType = 'artist' | 'playlist' | 'liked' | 'collection' | 'shelf-collection'
+
+export interface SavedCollection {
+  id: string
+  type: SavedCollectionType
+  sourceId: string
+  title: string
+  subtitle: string | null
+  imageUrl: string | null
+  trackCount: number | null
+  routePath: string | null
+  externalUrl: string | null
+  createdAt: string
+  updatedAt: string
+}

@@ -130,6 +130,80 @@ input {
   box-shadow: var(--shadow-player-glow);
 }
 
+.playing-bars__bar {
+  transform: scaleY(var(--playing-bar-idle));
+  transform-origin: bottom;
+  opacity: 0.78;
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease;
+}
+
+.playing-bars[data-playing="true"] .playing-bars__bar {
+  animation: tonaliz-playing-bars var(--playing-bar-duration) ease-in-out infinite alternate;
+  animation-delay: var(--playing-bar-delay);
+}
+
+.browse-refresh-spinner {
+  width: 0.82rem;
+  height: 0.82rem;
+  border-radius: 9999px;
+  border: 2px solid rgb(255 255 255 / 0.2);
+  border-top-color: color-mix(in srgb, var(--primary) 70%, white 18%);
+  opacity: 0.78;
+  transform: rotate(0deg);
+  transition:
+    border-color 160ms ease,
+    opacity 160ms ease,
+    transform 180ms ease;
+}
+
+.browse-refresh-spinner--ready {
+  opacity: 1;
+  border-color: color-mix(in srgb, var(--primary) 34%, white 12%);
+  border-top-color: color-mix(in srgb, var(--primary) 82%, white 18%);
+  transform: rotate(115deg);
+}
+
+.browse-refresh-spinner--active {
+  opacity: 1;
+  animation: tonaliz-refresh-spin 760ms linear infinite;
+}
+
+@keyframes tonaliz-refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes tonaliz-playing-bars {
+  0% {
+    transform: scaleY(var(--playing-bar-idle));
+    opacity: 0.58;
+  }
+
+  55% {
+    transform: scaleY(var(--playing-bar-peak));
+    opacity: 1;
+  }
+
+  100% {
+    transform: scaleY(0.42);
+    opacity: 0.72;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .playing-bars[data-playing="true"] .playing-bars__bar {
+    animation-duration: calc(var(--playing-bar-duration) * 1.55);
+    opacity: 0.9;
+  }
+
+  .browse-refresh-spinner--active {
+    animation-duration: 1200ms;
+  }
+}
+
 .scrollbar-subtle {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--border-subtle) 88%, transparent) transparent;
@@ -148,6 +222,14 @@ input {
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }
 
 .scrollbar-fade {

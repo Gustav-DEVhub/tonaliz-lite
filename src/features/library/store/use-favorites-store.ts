@@ -5,6 +5,7 @@ import {
   removeFavorite,
   saveFavorite,
 } from '@/lib/db/favorites-repository'
+import { useSavedTracksStore } from '@/features/library/store/use-saved-tracks-store'
 
 interface FavoritesState {
   favorites: Favorite[]
@@ -24,6 +25,11 @@ function createOptimisticFavorite(track: Track): Favorite {
     savedAt: timestamp,
     updatedAt: timestamp,
   }
+}
+
+function parseTimestamp(value: string) {
+  const parsed = Date.parse(value)
+  return Number.isNaN(parsed) ? Date.now() : parsed
 }
 
 export const useFavoritesStore = create<FavoritesState>((set, get) => ({
@@ -52,11 +58,14 @@ export const useFavoritesStore = create<FavoritesState>((set, get) => ({
 
       try {
         await removeFavorite(track.id)
+        await useSavedTracksStore.getState().unmarkFavorite(track.id)
       } catch (error) {
+        const favorites = await hydrateFavorites()
         set({
-          favorites: await hydrateFavorites(),
+          favorites,
           error: error instanceof Error ? error.message : 'Could not update favorites.',
         })
+        await useSavedTracksStore.getState().loadSavedTracks(favorites)
       }
 
       return
@@ -70,16 +79,22 @@ export const useFavoritesStore = create<FavoritesState>((set, get) => ({
 
     try {
       const persistedFavorite = await saveFavorite(track)
+      await useSavedTracksStore.getState().markFavorite(
+        track,
+        parseTimestamp(persistedFavorite.savedAt),
+      )
       set((state) => ({
         favorites: state.favorites.map((favorite) =>
           favorite.id === persistedFavorite.id ? persistedFavorite : favorite,
         ),
       }))
     } catch (error) {
+      const favorites = await hydrateFavorites()
       set({
-        favorites: await hydrateFavorites(),
+        favorites,
         error: error instanceof Error ? error.message : 'Could not update favorites.',
       })
+      await useSavedTracksStore.getState().loadSavedTracks(favorites)
     }
   },
   removeFavoriteTrack: async (trackId) => {
@@ -90,11 +105,14 @@ export const useFavoritesStore = create<FavoritesState>((set, get) => ({
 
     try {
       await removeFavorite(trackId)
+      await useSavedTracksStore.getState().unmarkFavorite(trackId)
     } catch (error) {
+      const favorites = await hydrateFavorites()
       set({
-        favorites: await hydrateFavorites(),
+        favorites,
         error: error instanceof Error ? error.message : 'Could not remove favorite.',
       })
+      await useSavedTracksStore.getState().loadSavedTracks(favorites)
     }
   },
   isFavorite: (trackId) => get().favorites.some((favorite) => favorite.id === trackId),
