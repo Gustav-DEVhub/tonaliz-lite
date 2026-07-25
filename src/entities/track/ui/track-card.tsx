@@ -1,5 +1,5 @@
 import { Heart, Pause, Play } from 'lucide-react'
-import { useState, type KeyboardEvent, type MouseEvent } from 'react'
+import { useEffect, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import type { Track } from '@/entities/track/model/types'
 import { TrackActionMenu } from '@/entities/track/ui/track-action-menu'
 import { MobileTrackActionSheet } from '@/entities/track/ui/mobile-track-action-sheet'
@@ -32,6 +32,9 @@ export function TrackCard({
   onPlayNext: (track: Track) => void
   onAddToQueue: (track: Track) => void
 }) {
+  const [isDesktopViewport, setIsDesktopViewport] = useState(() =>
+    typeof window === 'undefined' ? true : window.matchMedia('(min-width: 1024px)').matches,
+  )
   const [isMobileActionSheetOpen, setIsMobileActionSheetOpen] = useState(false)
   const showToast = useToastStore((state) => state.showToast)
   const mood = detectMood(track)
@@ -39,6 +42,14 @@ export function TrackCard({
   const longPressBind = useMobileLongPress(() => {
     setIsMobileActionSheetOpen(true)
   })
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 1024px)')
+    const handleViewportChange = () => setIsDesktopViewport(mediaQuery.matches)
+
+    mediaQuery.addEventListener('change', handleViewportChange)
+    return () => mediaQuery.removeEventListener('change', handleViewportChange)
+  }, [])
   const playIcon =
     isCurrent && isPlaying ? <Pause className="size-4" /> : <Play className="ml-0.5 size-4" />
 
@@ -66,13 +77,14 @@ export function TrackCard({
 
   return (
     <>
-      <article
+      {isDesktopViewport ? (
+        <article
         role="button"
         tabIndex={0}
         onClick={onOpenArtist}
         onKeyDown={handleOpenArtistFromKeyboard}
         className={cn(
-          'track-card-surface group/track-actions hidden h-full cursor-pointer flex-col overflow-hidden rounded-[1.35rem] p-2.5 transition-all duration-300 hover:-translate-y-1 hover:brightness-[1.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/16 lg:flex',
+          'track-card-surface group/track-actions hidden h-full cursor-pointer flex-col overflow-hidden rounded-[1.35rem] p-2.5 transition-[background-color,border-color,box-shadow,filter,transform] duration-200 hover:-translate-y-1 hover:brightness-[1.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/16 lg:flex',
           isCurrent && 'mood-glow ring-1 ring-white/10',
         )}
         aria-label={`Open ${track.artistName} artist playlist`}
@@ -81,7 +93,9 @@ export function TrackCard({
           <img
             src={track.imageUrl}
             alt={`${track.name} artwork`}
-            className="aspect-square w-full object-cover transition-transform duration-500 group-hover/track-actions:scale-[1.025]"
+            loading="lazy"
+            decoding="async"
+            className="aspect-square w-full object-cover transition-transform duration-300 group-hover/track-actions:scale-[1.025]"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/72 via-black/10 to-transparent" />
           <div
@@ -167,16 +181,17 @@ export function TrackCard({
             ))}
           </div>
         ) : null}
-      </article>
+        </article>
+      ) : (
 
-      <article
+        <article
         role="button"
         tabIndex={0}
         onClick={onOpenArtist}
         onKeyDown={handleOpenArtistFromKeyboard}
         {...longPressBind}
         className={cn(
-          'track-card-surface group/track-actions flex h-full cursor-pointer flex-col gap-2.5 overflow-hidden rounded-[1.35rem] p-2.5 transition-all duration-300 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/16 sm:gap-3 sm:rounded-[1.45rem] sm:p-3 lg:hidden',
+          'track-card-surface group/track-actions flex h-full cursor-pointer flex-col gap-2.5 overflow-hidden rounded-[1.35rem] p-2.5 transition-[background-color,border-color,box-shadow,transform] duration-200 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/16 sm:gap-3 sm:rounded-[1.45rem] sm:p-3 lg:hidden',
           isCurrent && 'mood-glow ring-1 ring-white/10',
         )}
         aria-label={`Open ${track.artistName} artist playlist`}
@@ -185,6 +200,8 @@ export function TrackCard({
           <img
             src={track.imageUrl}
             alt={`${track.name} artwork`}
+            loading="lazy"
+            decoding="async"
             className="aspect-square w-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/72 via-black/8 to-transparent" />
@@ -255,19 +272,22 @@ export function TrackCard({
             ))}
           </div>
         ) : null}
-      </article>
+        </article>
+      )}
 
-      <MobileTrackActionSheet
-        open={isMobileActionSheetOpen}
-        track={track}
-        isFavorite={isFavorite}
-        onOpenChange={setIsMobileActionSheetOpen}
-        onPlay={onPlay}
-        onPlayNext={onPlayNext}
-        onAddToQueue={onAddToQueue}
-        onToggleFavorite={() => onToggleFavorite()}
-        onViewArtist={() => onOpenArtist()}
-      />
+      {isMobileActionSheetOpen ? (
+        <MobileTrackActionSheet
+          open
+          track={track}
+          isFavorite={isFavorite}
+          onOpenChange={setIsMobileActionSheetOpen}
+          onPlay={onPlay}
+          onPlayNext={onPlayNext}
+          onAddToQueue={onAddToQueue}
+          onToggleFavorite={() => onToggleFavorite()}
+          onViewArtist={() => onOpenArtist()}
+        />
+      ) : null}
     </>
   )
 }

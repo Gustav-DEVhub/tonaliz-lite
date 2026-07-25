@@ -432,14 +432,16 @@ export function TrackActionMenu({
           : menuPanel
         : null}
 
-      {isDesktopVariant && trackUrl ? (
+      {isDesktopVariant && trackUrl && isShareDialogOpen ? (
         <ShareTrackDialog track={track} open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen} />
       ) : null}
-      <AddToPlaylistDialog
-        track={track}
-        open={isAddToPlaylistDialogOpen}
-        onOpenChange={setIsAddToPlaylistDialogOpen}
-      />
+      {isAddToPlaylistDialogOpen ? (
+        <AddToPlaylistDialog
+          track={track}
+          open
+          onOpenChange={setIsAddToPlaylistDialogOpen}
+        />
+      ) : null}
     </div>
   )
 }

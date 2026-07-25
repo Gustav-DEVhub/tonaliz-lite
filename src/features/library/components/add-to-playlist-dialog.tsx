@@ -33,6 +33,7 @@ export function AddToPlaylistDialog({
   const dragStartYRef = useRef<number | null>(null)
   const dragLatestYRef = useRef<number | null>(null)
   const [isCreating, setIsCreating] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
 
@@ -95,31 +96,45 @@ export function AddToPlaylistDialog({
   }
 
   const handleAddToPlaylist = async (playlistId: string) => {
-    if (effectiveTracks.length === 0) {
+    if (effectiveTracks.length === 0 || isSubmitting) {
       return
     }
 
-    if (isBulkMode) {
-      const result = await addTracksToPlaylist(playlistId, effectiveTracks)
-      const feedback = describeBulkResult(result.addedCount, result.alreadyAddedCount)
-      showToast(feedback)
-      return
+    setIsSubmitting(true)
+
+    try {
+      if (isBulkMode) {
+        const result = await addTracksToPlaylist(playlistId, effectiveTracks)
+        const feedback = describeBulkResult(result.addedCount, result.alreadyAddedCount)
+        showToast(feedback)
+        handleOpenChange(false)
+        return
+      }
+
+      const singleTrack = effectiveTracks[0]
+
+      if (!singleTrack) {
+        return
+      }
+
+      const result = await addTrackToPlaylist(playlistId, singleTrack)
+      showToast({
+        title: result.status === 'already-added' ? 'Already in playlist' : 'Added to playlist',
+        variant: result.status === 'already-added' ? 'info' : 'success',
+      })
+      handleOpenChange(false)
+    } catch {
+      showToast({ title: 'Could not add to playlist', variant: 'error' })
+    } finally {
+      setIsSubmitting(false)
     }
-
-    const singleTrack = effectiveTracks[0]
-
-    if (!singleTrack) {
-      return
-    }
-
-    const result = await addTrackToPlaylist(playlistId, singleTrack)
-    showToast({
-      title: result.status === 'already-added' ? 'Already in playlist' : 'Added to playlist',
-      variant: result.status === 'already-added' ? 'info' : 'success',
-    })
   }
 
   const handleCreatePlaylist = async () => {
+    if (isSubmitting) {
+      return
+    }
+
     const normalizedTitle = title.trim()
 
     if (!normalizedTitle) {
@@ -127,48 +142,49 @@ export function AddToPlaylistDialog({
       return
     }
 
-    const playlist = await createPlaylist({
-      title: normalizedTitle,
-      description,
-    })
+    setIsSubmitting(true)
 
-    if (effectiveTracks.length > 0) {
-      if (isBulkMode) {
-        const result = await addTracksToPlaylist(playlist.id, effectiveTracks)
-        showToast({
-          title: 'Playlist created',
-          description: result.addedCount > 0
-            ? `Added ${result.addedCount} ${result.addedCount === 1 ? 'track' : 'tracks'} to the new playlist.`
-            : 'All tracks were already present.',
-          variant: 'success',
-        })
-      } else {
-        const singleTrack = effectiveTracks[0]
+    try {
+      const playlist = await createPlaylist({
+        title: normalizedTitle,
+        description,
+      })
 
-        if (!singleTrack) {
-          showToast({ title: 'Playlist created', variant: 'success' })
-          onCreated?.(playlist.id)
-          setIsCreating(false)
-          setTitle('')
-          setDescription('')
-          return
+      if (effectiveTracks.length > 0) {
+        if (isBulkMode) {
+          const result = await addTracksToPlaylist(playlist.id, effectiveTracks)
+          showToast({
+            title: 'Playlist created',
+            description: result.addedCount > 0
+              ? `Added ${result.addedCount} ${result.addedCount === 1 ? 'track' : 'tracks'} to the new playlist.`
+              : 'All tracks were already present.',
+            variant: 'success',
+          })
+        } else {
+          const singleTrack = effectiveTracks[0]
+
+          if (singleTrack) {
+            await addTrackToPlaylist(playlist.id, singleTrack)
+            showToast({
+              title: 'Playlist created',
+              description: 'Track added to the new playlist.',
+              variant: 'success',
+            })
+          } else {
+            showToast({ title: 'Playlist created', variant: 'success' })
+          }
         }
-
-        await addTrackToPlaylist(playlist.id, singleTrack)
-        showToast({
-          title: 'Playlist created',
-          description: 'Track added to the new playlist.',
-          variant: 'success',
-        })
+      } else {
+        showToast({ title: 'Playlist created', variant: 'success' })
       }
-    } else {
-      showToast({ title: 'Playlist created', variant: 'success' })
-    }
 
-    onCreated?.(playlist.id)
-    setIsCreating(false)
-    setTitle('')
-    setDescription('')
+      onCreated?.(playlist.id)
+      handleOpenChange(false)
+    } catch {
+      showToast({ title: 'Could not create playlist', variant: 'error' })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const resetDraft = () => {
@@ -221,7 +237,7 @@ export function AddToPlaylistDialog({
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay
-          className="fixed inset-0 z-[140] bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 z-[140] bg-black/75"
           onClick={(event) => {
             event.stopPropagation()
             handleOpenChange(false)
@@ -229,7 +245,7 @@ export function AddToPlaylistDialog({
         />
         <Dialog.Content
           className={cn(
-            'fixed inset-x-0 bottom-0 z-[141] max-h-[88vh] overflow-y-auto rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(23,19,31,0.98),rgba(10,8,16,0.99))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-22px_58px_rgba(0,0,0,0.46)] outline-none',
+            'fixed inset-x-0 bottom-0 z-[141] max-h-[88vh] overflow-y-auto rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(23,19,31,0.98),rgba(10,8,16,0.99))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-22px_58px_rgba(0,0,0,0.46)] outline-none will-change-transform',
             'lg:bottom-auto lg:left-1/2 lg:top-1/2 lg:w-[min(30rem,calc(100vw-2rem))] lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-[1.7rem] lg:p-5 lg:shadow-[0_22px_72px_rgba(0,0,0,0.52)]',
           )}
           onClick={(event) => {
@@ -289,6 +305,7 @@ export function AddToPlaylistDialog({
                         event.stopPropagation()
                         void handleAddToPlaylist(playlist.id)
                       }}
+                      disabled={isSubmitting}
                     >
                       <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-[0.9rem] bg-primary/12 text-primary-soft">
                         {alreadyAdded ? <Check className="size-4" /> : <ListPlus className="size-4" />}
@@ -374,6 +391,7 @@ export function AddToPlaylistDialog({
                       event.stopPropagation()
                       void handleCreatePlaylist()
                     }}
+                    disabled={isSubmitting}
                   >
                     Create
                   </Button>

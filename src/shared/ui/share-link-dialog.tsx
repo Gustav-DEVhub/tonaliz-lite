@@ -168,7 +168,7 @@ export function ShareLinkDialog({
               initial={{ opacity: 0, y: 88 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 88 }}
-              transition={{ type: 'spring', stiffness: 420, damping: 36, mass: 0.7 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
               onClick={(event) => event.stopPropagation()}
             >
               <div className="mx-auto mb-3 h-1.5 w-14 rounded-full bg-white/18" />

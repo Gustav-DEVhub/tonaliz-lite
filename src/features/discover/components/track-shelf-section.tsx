@@ -39,6 +39,9 @@ export function TrackShelfSection({
   hideHeader?: boolean
   className?: string
 }) {
+  const [isMobileViewport, setIsMobileViewport] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches,
+  )
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const [canScrollPrevious, setCanScrollPrevious] = useState(false)
   const [canScrollNext, setCanScrollNext] = useState(false)
@@ -46,6 +49,15 @@ export function TrackShelfSection({
   const sectionPlaylist = createPlaylist(title, source, tracks)
   const shelfCollectionSource = source === 'home' || source === 'discover' ? source : null
   const canSaveShelfCollection = Boolean(shelfId && shelfCollectionSource)
+  const renderedTracks = isMobileViewport ? tracks.slice(0, 8) : tracks
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 1023px)')
+    const handleViewportChange = () => setIsMobileViewport(mediaQuery.matches)
+
+    mediaQuery.addEventListener('change', handleViewportChange)
+    return () => mediaQuery.removeEventListener('change', handleViewportChange)
+  }, [])
 
   const updateScrollControls = () => {
     const scroller = scrollerRef.current
@@ -155,7 +167,7 @@ export function TrackShelfSection({
         aria-label={`${title} carousel`}
       >
         <div className="flex min-w-max gap-3.5 sm:gap-4 lg:gap-5">
-          {tracks.map((track) => {
+          {renderedTracks.map((track) => {
             const isCurrent = currentTrack?.id === track.id
 
             return (

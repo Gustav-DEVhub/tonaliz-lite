@@ -568,7 +568,7 @@ export function ArtistProfilePage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: shouldReduceMotion ? 0.1 : 0.16 }}
+            transition={{ duration: shouldReduceMotion ? 0.01 : 0.14 }}
               onClick={() => setIsArtistTracksMenuOpen(false)}
               aria-label="Close artist tracks options"
             />
@@ -580,8 +580,8 @@ export function ArtistProfilePage() {
               exit={{ y: '100%', opacity: 0.9 }}
               transition={
                 shouldReduceMotion
-                  ? { duration: 0.12, ease: 'easeOut' }
-                  : { type: 'spring', stiffness: 420, damping: 36, mass: 0.7 }
+                  ? { duration: 0.01, ease: 'linear' }
+                  : { duration: 0.18, ease: 'easeOut' }
               }
               drag="y"
               dragListener={false}

@@ -1,5 +1,5 @@
 import { MoreVertical, Pause, Play } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { createPlaylist } from '@/entities/track/lib/create-playlist'
 import type { Playlist, Track } from '@/entities/track/model/types'
@@ -465,6 +465,22 @@ function toTitleCase(value: string) {
     .join(' ')
 }
 
+function useIsDesktopViewport() {
+  const [isDesktopViewport, setIsDesktopViewport] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches,
+  )
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 1024px)')
+    const handleViewportChange = () => setIsDesktopViewport(mediaQuery.matches)
+
+    mediaQuery.addEventListener('change', handleViewportChange)
+    return () => mediaQuery.removeEventListener('change', handleViewportChange)
+  }, [])
+
+  return isDesktopViewport
+}
+
 function QuickResumeCard({
   track,
   isCurrent,
@@ -488,6 +504,7 @@ function QuickResumeCard({
   onAddToQueue: (track: Track) => void
   compact?: boolean
 }) {
+  const isDesktopViewport = useIsDesktopViewport()
   const [isMobileActionSheetOpen, setIsMobileActionSheetOpen] = useState(false)
   const longPressBind = useMobileLongPress(() => {
     setIsMobileActionSheetOpen(true)
@@ -515,6 +532,8 @@ function QuickResumeCard({
         <img
           src={track.imageUrl}
           alt={`${track.name} artwork`}
+          loading="lazy"
+          decoding="async"
           className={cn('w-full rounded-[1.05rem] object-cover', compact ? 'aspect-[1.05/1]' : 'aspect-[1.08/1]')}
         />
         <div className="absolute inset-0 rounded-[1.05rem] bg-gradient-to-t from-black/66 via-transparent to-transparent" />
@@ -523,16 +542,18 @@ function QuickResumeCard({
           onClick={(event) => event.stopPropagation()}
           onKeyDown={(event) => event.stopPropagation()}
         >
-          <TrackActionMenu
-            track={track}
-            variant="desktop"
-            isFavorite={isFavorite}
-            onPlayNext={onPlayNext}
-            onAddToQueue={onAddToQueue}
-            onToggleFavorite={() => onToggleFavorite()}
-            onViewArtist={() => onOpenArtist()}
-            triggerClassName="border-white/14 bg-black/58 text-white hover:bg-black/72"
-          />
+          {isDesktopViewport ? (
+            <TrackActionMenu
+              track={track}
+              variant="desktop"
+              isFavorite={isFavorite}
+              onPlayNext={onPlayNext}
+              onAddToQueue={onAddToQueue}
+              onToggleFavorite={() => onToggleFavorite()}
+              onViewArtist={() => onOpenArtist()}
+              triggerClassName="border-white/14 bg-black/58 text-white hover:bg-black/72"
+            />
+          ) : null}
         </div>
         <button
           type="button"
@@ -554,17 +575,19 @@ function QuickResumeCard({
         <p className="line-clamp-1 text-[0.84rem] text-text-secondary">{track.artistName}</p>
       </div>
 
-      <MobileTrackActionSheet
-        open={isMobileActionSheetOpen}
-        track={track}
-        isFavorite={isFavorite}
-        onOpenChange={setIsMobileActionSheetOpen}
-        onPlay={onPlay}
-        onPlayNext={onPlayNext}
-        onAddToQueue={onAddToQueue}
-        onToggleFavorite={() => onToggleFavorite()}
-        onViewArtist={() => onOpenArtist()}
-      />
+      {isMobileActionSheetOpen ? (
+        <MobileTrackActionSheet
+          open
+          track={track}
+          isFavorite={isFavorite}
+          onOpenChange={setIsMobileActionSheetOpen}
+          onPlay={onPlay}
+          onPlayNext={onPlayNext}
+          onAddToQueue={onAddToQueue}
+          onToggleFavorite={() => onToggleFavorite()}
+          onViewArtist={() => onOpenArtist()}
+        />
+      ) : null}
     </article>
   )
 }
@@ -590,6 +613,7 @@ function KeepListeningRow({
   onPlayNext: (track: Track) => void
   onAddToQueue: (track: Track) => void
 }) {
+  const isDesktopViewport = useIsDesktopViewport()
   const [isMobileActionSheetOpen, setIsMobileActionSheetOpen] = useState(false)
   const longPressBind = useMobileLongPress(() => {
     setIsMobileActionSheetOpen(true)
@@ -612,7 +636,7 @@ function KeepListeningRow({
         isCurrent && 'mood-glow ring-1 ring-white/10',
       )}
     >
-      <img src={track.imageUrl} alt={`${track.name} artwork`} className="size-14 shrink-0 rounded-[1rem] object-cover" />
+      <img src={track.imageUrl} alt={`${track.name} artwork`} loading="lazy" decoding="async" className="size-14 shrink-0 rounded-[1rem] object-cover" />
       <div className="min-w-0 flex-1">
         <p className="line-clamp-1 font-heading text-[1rem] text-text-primary">{track.name}</p>
         <p className="mt-1 line-clamp-1 text-[0.84rem] text-text-secondary">
@@ -638,16 +662,18 @@ function KeepListeningRow({
           onClick={(event) => event.stopPropagation()}
           onKeyDown={(event) => event.stopPropagation()}
         >
-          <TrackActionMenu
-            track={track}
-            variant="desktop"
-            isFavorite={isFavorite}
-            onPlayNext={onPlayNext}
-            onAddToQueue={onAddToQueue}
-            onToggleFavorite={() => onToggleFavorite()}
-            onViewArtist={() => onOpenArtist()}
-            triggerClassName="border-white/12 bg-black/22"
-          />
+          {isDesktopViewport ? (
+            <TrackActionMenu
+              track={track}
+              variant="desktop"
+              isFavorite={isFavorite}
+              onPlayNext={onPlayNext}
+              onAddToQueue={onAddToQueue}
+              onToggleFavorite={() => onToggleFavorite()}
+              onViewArtist={() => onOpenArtist()}
+              triggerClassName="border-white/12 bg-black/22"
+            />
+          ) : null}
         </div>
         <button
           type="button"
@@ -662,17 +688,19 @@ function KeepListeningRow({
         </button>
       </div>
 
-      <MobileTrackActionSheet
-        open={isMobileActionSheetOpen}
-        track={track}
-        isFavorite={isFavorite}
-        onOpenChange={setIsMobileActionSheetOpen}
-        onPlay={onPlay}
-        onPlayNext={onPlayNext}
-        onAddToQueue={onAddToQueue}
-        onToggleFavorite={() => onToggleFavorite()}
-        onViewArtist={() => onOpenArtist()}
-      />
+      {isMobileActionSheetOpen ? (
+        <MobileTrackActionSheet
+          open
+          track={track}
+          isFavorite={isFavorite}
+          onOpenChange={setIsMobileActionSheetOpen}
+          onPlay={onPlay}
+          onPlayNext={onPlayNext}
+          onAddToQueue={onAddToQueue}
+          onToggleFavorite={() => onToggleFavorite()}
+          onViewArtist={() => onOpenArtist()}
+        />
+      ) : null}
     </article>
   )
 }

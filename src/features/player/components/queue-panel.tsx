@@ -51,8 +51,8 @@ export function QueuePanel() {
   const isQueueDragActiveRef = useRef(false)
   const shouldReduceMotion = useReducedMotion()
   const railTransition = shouldReduceMotion
-    ? { duration: 0.1, ease: 'easeOut' as const }
-    : { type: 'spring' as const, stiffness: 360, damping: 34, mass: 0.7 }
+    ? { duration: 0.01, ease: 'linear' as const }
+    : { duration: 0.2, ease: 'easeOut' as const }
   const reorderSensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {

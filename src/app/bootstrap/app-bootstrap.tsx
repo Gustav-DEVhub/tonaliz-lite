@@ -20,12 +20,13 @@ export function AppBootstrap() {
 
   useEffect(() => {
     void (async () => {
-      await loadFavorites()
+      const favoritesLoad = loadFavorites()
+      const playlistsLoad = loadPlaylists()
+      const collectionsLoad = loadSavedCollections()
+
+      await favoritesLoad
       await loadSavedTracks(useFavoritesStore.getState().favorites)
-      await Promise.all([
-        loadPlaylists(),
-        loadSavedCollections(),
-      ])
+      await Promise.all([playlistsLoad, collectionsLoad])
       handleOnlineStatus()
     })()
 

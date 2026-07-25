@@ -1,5 +1,5 @@
 import { Heart, MoreVertical, Pause, Play } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Track } from '@/entities/track/model/types'
 import {
   DEFAULT_DESKTOP_TRACK_COLUMNS,
@@ -69,6 +69,9 @@ export function TrackListRow({
   desktopColumns?: DesktopTrackColumnsConfig
   desktopSourceText?: string | null
 }) {
+  const [isDesktopViewport, setIsDesktopViewport] = useState(() =>
+    typeof window === 'undefined' ? true : window.matchMedia('(min-width: 1024px)').matches,
+  )
   const [isMobileActionSheetOpen, setIsMobileActionSheetOpen] = useState(false)
   const showToast = useToastStore((state) => state.showToast)
   const mood = detectMood(track)
@@ -76,6 +79,14 @@ export function TrackListRow({
   const longPressBind = useMobileLongPress(() => {
     setIsMobileActionSheetOpen(true)
   })
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 1024px)')
+    const handleViewportChange = () => setIsDesktopViewport(mediaQuery.matches)
+
+    mediaQuery.addEventListener('change', handleViewportChange)
+    return () => mediaQuery.removeEventListener('change', handleViewportChange)
+  }, [])
   const resolvedDesktopSource = desktopSourceText ?? resolveDesktopTrackSource(track)
   const resolvedDesktopColumns = {
     artist: desktopColumns.artist,
@@ -96,7 +107,7 @@ export function TrackListRow({
       tabIndex={onOpenContext ? 0 : undefined}
       {...longPressBind}
       className={cn(
-        'track-card-surface group/track-actions rounded-[1.3rem] px-3 py-3 transition-all duration-300 sm:rounded-[1.45rem] sm:px-4',
+        'content-visibility-auto track-card-surface group/track-actions rounded-[1.3rem] px-3 py-3 transition-[background-color,border-color,box-shadow] duration-200 sm:rounded-[1.45rem] sm:px-4',
         onOpenContext && 'cursor-pointer hover:border-white/12 hover:bg-card-hover',
         isCurrent && 'mood-glow ring-1 ring-white/10',
       )}
@@ -114,7 +125,7 @@ export function TrackListRow({
     >
       <div className={cn('flex flex-col gap-2.5 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-3 xl:gap-4', desktopDetailLayout && 'lg:hidden')}>
         <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
-          <img src={track.imageUrl} alt={`${track.name} artwork`} className="size-[4rem] rounded-[0.95rem] object-cover sm:size-[4.4rem] sm:rounded-[1rem]" />
+          <img src={track.imageUrl} alt={`${track.name} artwork`} loading="lazy" decoding="async" className="size-[4rem] rounded-[0.95rem] object-cover sm:size-[4.4rem] sm:rounded-[1rem]" />
 
           <button
             type="button"
@@ -208,7 +219,7 @@ export function TrackListRow({
               onClick={(event) => event.stopPropagation()}
               onKeyDown={(event) => event.stopPropagation()}
             >
-              <div className={enableDesktopActionsMenu ? 'lg:hidden' : undefined}>
+              {isDesktopViewport && !enableDesktopActionsMenu ? (
                 <TrackActionMenu
                   track={track}
                   onPlayNext={onPlayNext}
@@ -219,9 +230,9 @@ export function TrackListRow({
                   }}
                   shareContext={shareContext}
                 />
-              </div>
+              ) : null}
 
-              {enableDesktopActionsMenu ? (
+              {isDesktopViewport && enableDesktopActionsMenu ? (
                 <TrackActionMenu
                   track={track}
                   variant="desktop"
@@ -259,7 +270,7 @@ export function TrackListRow({
 
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-3">
-              <img src={track.imageUrl} alt={`${track.name} artwork`} className="size-12 shrink-0 rounded-[0.9rem] object-cover" />
+              <img src={track.imageUrl} alt={`${track.name} artwork`} loading="lazy" decoding="async" className="size-12 shrink-0 rounded-[0.9rem] object-cover" />
               <button
                 type="button"
                 className="mood-glow flex size-8 shrink-0 items-center justify-center rounded-full border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(0,0,0,0.08)),color-mix(in_srgb,var(--mood-accent)_18%,rgba(0,0,0,0.6))] text-white transition-transform duration-200 hover:scale-[1.03] hover:border-white/18"
@@ -348,20 +359,22 @@ export function TrackListRow({
         </div>
       ) : null}
 
-      <MobileTrackActionSheet
-        open={isMobileActionSheetOpen}
-        track={track}
-        isFavorite={isFavorite}
-        onOpenChange={setIsMobileActionSheetOpen}
-        onPlay={onPlay}
-        onPlayNext={onPlayNext}
-        onAddToQueue={onAddToQueue}
-        onToggleFavorite={() => onToggleFavorite()}
-        onRemoveFromHistory={onRemoveFromHistory ? () => onRemoveFromHistory() : undefined}
-        onRemoveFromPlaylist={onRemoveFromPlaylist ? () => onRemoveFromPlaylist() : undefined}
-        onViewArtist={onViewArtist ? () => onViewArtist() : onOpenContext ? () => onOpenContext() : undefined}
-        shareContext={shareContext}
-      />
+      {isMobileActionSheetOpen ? (
+        <MobileTrackActionSheet
+          open
+          track={track}
+          isFavorite={isFavorite}
+          onOpenChange={setIsMobileActionSheetOpen}
+          onPlay={onPlay}
+          onPlayNext={onPlayNext}
+          onAddToQueue={onAddToQueue}
+          onToggleFavorite={() => onToggleFavorite()}
+          onRemoveFromHistory={onRemoveFromHistory ? () => onRemoveFromHistory() : undefined}
+          onRemoveFromPlaylist={onRemoveFromPlaylist ? () => onRemoveFromPlaylist() : undefined}
+          onViewArtist={onViewArtist ? () => onViewArtist() : onOpenContext ? () => onOpenContext() : undefined}
+          shareContext={shareContext}
+        />
+      ) : null}
     </article>
   )
 }

@@ -30,6 +30,7 @@ import { EmptyState } from '@/shared/ui/empty-state'
 import { ShareLinkDialog } from '@/shared/ui/share-link-dialog'
 import { TrackGridSkeleton } from '@/features/discover/components/track-grid-skeleton'
 import { StatusPanel } from '@/shared/ui/status-panel'
+import { CompactTrackCard } from '@/entities/track/ui/compact-track-card'
 
 type SortOption = 'recently-played' | 'recently-added' | 'title' | 'artist'
 type MobileLibraryCategory = 'all' | 'songs' | 'artists' | 'playlists'
@@ -526,6 +527,26 @@ export function LibraryPage() {
 
     tracks.forEach((track) => addToQueue(track))
     showToast({ title: 'Added to queue', description: `${tracks.length} tracks added.`, variant: 'success' })
+    setDetailMoreMenu(null)
+  }
+
+  const playCollectionNext = (title: string, tracks: Track[]) => {
+    if (tracks.length === 0) {
+      showToast({ title: 'No tracks to play', variant: 'warning' })
+      return
+    }
+
+    if (!currentTrack) {
+      setDetailMoreMenu(null)
+      playCollection(tracks, createPlaylist(title, 'library', tracks))
+      return
+    }
+
+    // Insert in reverse because each public queue action inserts directly after the current track.
+    for (const track of [...tracks].reverse()) {
+      playNextInQueue(track)
+    }
+    showToast({ title: 'Added to queue', description: `${tracks.length} tracks will play next.`, variant: 'success' })
     setDetailMoreMenu(null)
   }
 
@@ -1046,6 +1067,25 @@ export function LibraryPage() {
     )
   }
 
+  const renderMobileSavedTrackCard = (track: Track) => {
+    const isCurrent = currentTrack?.id === track.id
+
+    return (
+      <CompactTrackCard
+        key={`mobile-saved-track-card-${track.id}`}
+        track={track}
+        isCurrent={isCurrent}
+        isPlaying={isCurrent && isPlaying}
+        isFavorite={favoriteTrackIds.has(track.id)}
+        onPlay={() => playFromContext(track, savedTracksPlaylist)}
+        onPlayNext={playNextInQueue}
+        onAddToQueue={addToQueue}
+        onToggleFavorite={() => void toggleFavorite(track)}
+        onViewArtist={() => openArtistFromTrack(track)}
+      />
+    )
+  }
+
   const renderMobileFavoriteRow = (track: (typeof favorites)[number], cleanDetail = false) => {
     const isCurrent = currentTrack?.id === track.id
 
@@ -1144,7 +1184,7 @@ export function LibraryPage() {
       role="button"
       tabIndex={0}
       className={cn(
-        'group/library-card track-card-surface relative w-full text-left transition-all duration-300 hover:border-white/12 hover:bg-white/10 hover:shadow-[0_4px_12px_rgba(0,0,0,0.3)]',
+        'group/library-card track-card-surface relative w-full text-left transition-[background-color,border-color,box-shadow,transform] duration-200 hover:border-white/12 hover:bg-white/10 hover:shadow-[0_4px_12px_rgba(0,0,0,0.3)]',
         desktopViewMode === 'grid'
           ? 'rounded-lg p-2.5 hover:scale-[1.02]'
           : 'flex min-h-20 items-center gap-3 rounded-lg px-3 py-2.5',
@@ -1337,6 +1377,7 @@ export function LibraryPage() {
             mode === 'grid' && 'mt-2',
           )}
           onClick={(event) => {
+            event.preventDefault()
             event.stopPropagation()
             setDetailMoreMenu('liked')
           }}
@@ -1412,24 +1453,24 @@ export function LibraryPage() {
                 className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-white/6 hover:text-text-primary"
                 onClick={(event) => {
                   event.stopPropagation()
-                  openCollectionPlaylistDialog(favorites, 'Music I Like')
+                  playCollectionNext('Music I Like', favorites)
                   setDesktopItemMenuTarget(null)
                 }}
               >
-                <ListPlus className="size-4" />
-                Add to playlist
+                <Play className="size-4" />
+                Play next
               </button>
               <button
                 type="button"
                 className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-white/6 hover:text-text-primary"
                 onClick={(event) => {
                   event.stopPropagation()
-                  void handleShareCollection('liked')
+                  openCollectionPlaylistDialog(favorites, 'Music I Like')
                   setDesktopItemMenuTarget(null)
                 }}
               >
-                <Share2 className="size-4" />
-                Share
+                <ListPlus className="size-4" />
+                Add to playlist
               </button>
             </>,
           )}
@@ -1444,7 +1485,7 @@ export function LibraryPage() {
       role="button"
       tabIndex={0}
       className={cn(
-        'group/library-card track-card-surface relative w-full text-left transition-all duration-300 hover:border-white/12 hover:bg-card-hover',
+        'group/library-card track-card-surface relative w-full text-left transition-[background-color,border-color,box-shadow,transform] duration-200 hover:border-white/12 hover:bg-card-hover',
         mode === 'mobile' ? 'rounded-[1.35rem] p-2.5' : desktopViewMode === 'grid' ? 'rounded-lg p-3 hover:scale-[1.02]' : 'flex min-h-20 items-center gap-3 rounded-lg px-3 py-2.5',
       )}
       onClick={() => openSavedCollection(collection)}
@@ -1566,7 +1607,7 @@ export function LibraryPage() {
         role="button"
         tabIndex={0}
         className={cn(
-          'group/library-card track-card-surface relative w-full text-left transition-all duration-300 hover:border-white/12 hover:bg-card-hover',
+          'group/library-card track-card-surface relative w-full text-left transition-[background-color,border-color,box-shadow,transform] duration-200 hover:border-white/12 hover:bg-card-hover',
           mode === 'mobile'
             ? 'flex items-center gap-3 rounded-[1.25rem] px-3 py-3'
             : isMobileGrid
@@ -1758,9 +1799,14 @@ export function LibraryPage() {
 
     const rect = event.currentTarget.getBoundingClientRect()
     const width = 224
+    const estimatedHeight = 360
     const viewportPadding = 12
     const left = Math.max(viewportPadding, Math.min(rect.right - width, window.innerWidth - width - viewportPadding))
-    const top = Math.min(rect.bottom + 8, window.innerHeight - viewportPadding)
+    const spaceBelow = window.innerHeight - rect.bottom - viewportPadding
+    const opensAbove = spaceBelow < estimatedHeight && rect.top > estimatedHeight + viewportPadding
+    const top = opensAbove
+      ? Math.max(viewportPadding, rect.top - estimatedHeight - 8)
+      : Math.min(rect.bottom + 8, window.innerHeight - estimatedHeight - viewportPadding)
 
     setDesktopItemMenuStyle({
       position: 'fixed',
@@ -1788,7 +1834,7 @@ export function LibraryPage() {
       <div
         data-library-card-menu-root
         style={desktopItemMenuStyle}
-        className="editorial-panel z-[120] rounded-[1rem] p-2 shadow-[0_18px_46px_rgba(0,0,0,0.38)]"
+        className="editorial-panel z-[120] max-h-[min(28rem,calc(100vh-1.5rem))] overflow-y-auto rounded-[1rem] p-2 shadow-[0_18px_46px_rgba(0,0,0,0.38)]"
         onClick={(event) => event.stopPropagation()}
         role="menu"
       >
@@ -2043,7 +2089,13 @@ export function LibraryPage() {
                 )
               ) : resolvedMobileCategory === 'songs' ? (
                 sortedSavedTracks.length > 0 ? (
-                  sortedSavedTracks.map((track) => renderMobileSavedTrackRow(track))
+                  mobileViewMode === 'grid' ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      {sortedSavedTracks.map((track) => renderMobileSavedTrackCard(track))}
+                    </div>
+                  ) : (
+                    sortedSavedTracks.map((track) => renderMobileSavedTrackRow(track))
+                  )
                 ) : (
                   <EmptyState
                     title="No songs yet"
@@ -2431,7 +2483,7 @@ export function LibraryPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: shouldReduceMotion ? 0.1 : 0.16 }}
+            transition={{ duration: shouldReduceMotion ? 0.01 : 0.14 }}
             onClick={() => setIsMobileSortSheetOpen(false)}
             aria-label="Close sort options"
           />
@@ -2442,8 +2494,8 @@ export function LibraryPage() {
             exit={{ opacity: 0, y: 96 }}
             transition={
               shouldReduceMotion
-                ? { duration: 0.12, ease: 'easeOut' }
-                : { type: 'spring', stiffness: 420, damping: 36, mass: 0.7 }
+                ? { duration: 0.01, ease: 'linear' }
+                : { duration: 0.18, ease: 'easeOut' }
             }
             drag="y"
             dragListener={false}
@@ -2508,7 +2560,7 @@ export function LibraryPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: shouldReduceMotion ? 0.1 : 0.16 }}
+            transition={{ duration: shouldReduceMotion ? 0.01 : 0.14 }}
             onClick={() => setMobileItemMenuTarget(null)}
             aria-label="Close more options"
           />
@@ -2519,8 +2571,8 @@ export function LibraryPage() {
             exit={{ opacity: 0, y: 96 }}
             transition={
               shouldReduceMotion
-                ? { duration: 0.12, ease: 'easeOut' }
-                : { type: 'spring', stiffness: 420, damping: 36, mass: 0.7 }
+                ? { duration: 0.01, ease: 'linear' }
+                : { duration: 0.18, ease: 'easeOut' }
             }
             drag="y"
             dragListener={false}
@@ -2801,7 +2853,7 @@ export function LibraryPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: shouldReduceMotion ? 0.1 : 0.16 }}
+            transition={{ duration: shouldReduceMotion ? 0.01 : 0.14 }}
             onClick={() => setDetailMoreMenu(null)}
             aria-label="Close more options"
           />
@@ -2812,8 +2864,8 @@ export function LibraryPage() {
             exit={{ opacity: 0, y: 96 }}
             transition={
               shouldReduceMotion
-                ? { duration: 0.12, ease: 'easeOut' }
-                : { type: 'spring', stiffness: 420, damping: 36, mass: 0.7 }
+                ? { duration: 0.01, ease: 'linear' }
+                : { duration: 0.18, ease: 'easeOut' }
             }
             drag="y"
             dragListener={false}
@@ -2850,6 +2902,32 @@ export function LibraryPage() {
               </button>
             </div>
             <div className="space-y-1">
+              {detailMoreMenu === 'liked' ? (
+                <>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-[1.1rem] px-3 py-3 text-left text-[0.98rem] text-text-secondary transition-colors active:bg-white/8"
+                    onClick={() => {
+                      setDetailMoreMenu(null)
+                      playCollection(favorites, favoritesPlaylist)
+                    }}
+                  >
+                    <Play className="size-4.5" />
+                    Play
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-[1.1rem] px-3 py-3 text-left text-[0.98rem] text-text-secondary transition-colors active:bg-white/8"
+                    onClick={() => {
+                      setDetailMoreMenu(null)
+                      shuffleCollection('Music I Like', favorites)
+                    }}
+                  >
+                    <Shuffle className="size-4.5" />
+                    Shuffle
+                  </button>
+                </>
+              ) : null}
               <button
                 type="button"
                 className="flex w-full items-center gap-3 rounded-[1.1rem] px-3 py-3 text-left text-[0.98rem] text-text-secondary transition-colors active:bg-white/8"
@@ -2858,6 +2936,16 @@ export function LibraryPage() {
                 <ListPlus className="size-4.5" />
                 Add to queue
               </button>
+              {detailMoreMenu === 'liked' ? (
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-3 rounded-[1.1rem] px-3 py-3 text-left text-[0.98rem] text-text-secondary transition-colors active:bg-white/8"
+                  onClick={() => playCollectionNext('Music I Like', favorites)}
+                >
+                  <Play className="size-4.5" />
+                  Play next
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="flex w-full items-center gap-3 rounded-[1.1rem] px-3 py-3 text-left text-[0.98rem] text-text-secondary transition-colors active:bg-white/8"

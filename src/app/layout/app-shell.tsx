@@ -19,7 +19,8 @@ import { cn } from '@/shared/lib/utils'
 import { Badge } from '@/shared/ui/badge'
 import { ToastViewport } from '@/shared/ui/toast-viewport'
 
-const HomePage = lazy(async () => import('@/features/home/pages/home-page').then((module) => ({ default: module.HomePage })))
+const loadHomePage = () => import('@/features/home/pages/home-page').then((module) => ({ default: module.HomePage }))
+const HomePage = lazy(loadHomePage)
 const DiscoverPage = lazy(async () =>
   import('@/features/discover/pages/discover-page').then((module) => ({ default: module.DiscoverPage })),
 )
@@ -32,9 +33,8 @@ const ShelfCollectionPage = lazy(async () =>
 const ArtistProfilePage = lazy(async () =>
   import('@/features/artist/pages/artist-profile-page').then((module) => ({ default: module.ArtistProfilePage })),
 )
-const LibraryPage = lazy(async () =>
-  import('@/features/library/pages/library-page').then((module) => ({ default: module.LibraryPage })),
-)
+const loadLibraryPage = () => import('@/features/library/pages/library-page').then((module) => ({ default: module.LibraryPage }))
+const LibraryPage = lazy(loadLibraryPage)
 const ExpandedPlayerPage = lazy(async () =>
   import('@/features/player/pages/expanded-player-page').then((module) => ({ default: module.ExpandedPlayerPage })),
 )
@@ -385,6 +385,28 @@ export function AppShell() {
   const [sidebarIconCue, setSidebarIconCue] = useState<'left' | 'right' | null>(null)
   const [isSidebarPlaylistDialogOpen, setIsSidebarPlaylistDialogOpen] = useState(false)
 
+  useEffect(() => {
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
+      cancelIdleCallback?: (id: number) => void
+    }
+
+    const prefetch = () => {
+      void loadHomePage()
+      void loadLibraryPage()
+    }
+
+    if (idleWindow.requestIdleCallback) {
+      const idleId = idleWindow.requestIdleCallback(prefetch, { timeout: 2500 })
+
+      return () => idleWindow.cancelIdleCallback?.(idleId)
+    }
+
+    const timeoutId = window.setTimeout(prefetch, 1500)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [])
+
   const moodToken = moodTheme[currentMood]
   const moodStyle = {
     '--mood-accent': moodToken.accent,
@@ -676,7 +698,7 @@ export function AppShell() {
       >
         <div
           className={cn(
-            'lg:grid lg:h-full lg:min-h-0 lg:gap-6 transition-[grid-template-columns] duration-300 ease-in-out xl:gap-8',
+            'lg:grid lg:h-full lg:min-h-0 lg:gap-6 transition-[grid-template-columns] duration-[180ms] ease-out xl:gap-8',
             isRightPanelDragging ? 'lg:transition-none' : '',
           )}
           style={desktopGridStyle}
@@ -688,7 +710,7 @@ export function AppShell() {
             <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 z-10 w-px bg-[#333333]" />
             <motion.div
               animate={{ width: effectiveLeftSidebarWidth }}
-              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
               className="flex h-full min-h-0 flex-col gap-5 overflow-hidden pr-1"
             >
               <div className="shrink-0 space-y-4 border-b border-white/8 pb-5">

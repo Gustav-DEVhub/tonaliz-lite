@@ -186,14 +186,14 @@ export function OrganizeMenu({ sortMode, viewMode, onSortChange, onViewChange }:
       <button
         ref={triggerRef}
         type="button"
-        className="inline-flex min-h-9 items-center gap-2 rounded-full border border-white/8 bg-white/[0.035] px-3 py-2 text-[0.72rem] font-semibold text-text-secondary transition-colors duration-300 ease-in-out hover:bg-white/5 hover:text-text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/45"
+        className="inline-flex min-h-9 items-center gap-2 rounded-full border border-white/8 bg-white/[0.035] px-3 py-2 text-[0.72rem] font-semibold text-text-secondary transition-colors duration-150 ease-out hover:bg-white/5 hover:text-text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/45"
         onClick={() => setIsOpen((open) => !open)}
         aria-expanded={isOpen}
         aria-haspopup="menu"
       >
         <SlidersHorizontal className="size-3.5 shrink-0" />
         <span>Organize</span>
-        <ChevronDown className={cn('size-3.5 shrink-0 transition-transform duration-300 ease-in-out', isOpen && 'rotate-180')} />
+        <ChevronDown className={cn('size-3.5 shrink-0 transition-transform duration-150 ease-out', isOpen && 'rotate-180')} />
       </button>
 
       {typeof document !== 'undefined'
@@ -202,7 +202,7 @@ export function OrganizeMenu({ sortMode, viewMode, onSortChange, onViewChange }:
               ref={panelRef}
               style={panelStyle}
               className={cn(
-                'z-[90] origin-top-right rounded-[1rem] border border-white/10 bg-[#17121f]/95 p-2.5 shadow-[0_18px_42px_rgba(0,0,0,0.42)] backdrop-blur-xl transition-all duration-300 ease-in-out',
+                'z-[90] origin-top-right rounded-[1rem] border border-white/10 bg-[#17121f]/95 p-2.5 shadow-[0_18px_42px_rgba(0,0,0,0.42)] backdrop-blur-xl transition-all duration-150 ease-out',
                 isOpen ? 'pointer-events-auto translate-y-0 opacity-100 scale-100' : 'pointer-events-none -translate-y-1 opacity-0 scale-[0.98]',
               )}
               role="menu"
@@ -217,7 +217,7 @@ export function OrganizeMenu({ sortMode, viewMode, onSortChange, onViewChange }:
                     role="menuitemradio"
                     aria-checked={sortMode === value}
                     className={cn(
-                      'flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-[0.7rem] transition-colors duration-300 ease-in-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/45',
+                      'flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-[0.7rem] transition-colors duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/45',
                       sortMode === value ? 'bg-primary/14 text-text-primary' : 'text-text-muted hover:bg-white/6 hover:text-text-primary',
                     )}
                     onClick={() => {
@@ -244,7 +244,7 @@ export function OrganizeMenu({ sortMode, viewMode, onSortChange, onViewChange }:
                           aria-label={option.label}
                           title={option.label}
                           className={cn(
-                            'relative inline-flex size-10 items-center justify-center rounded-[0.9rem] border text-text-secondary transition-all duration-300 ease-in-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/45',
+                            'relative inline-flex size-10 items-center justify-center rounded-[0.9rem] border text-text-secondary transition-all duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/45',
                             viewMode === option.value
                               ? 'border-primary/30 bg-primary/16 text-text-primary shadow-[0_0_0_1px_rgba(255,255,255,0.03)]'
                               : 'border-transparent bg-white/[0.035] hover:border-white/10 hover:bg-white/7 hover:text-text-primary',
@@ -267,7 +267,7 @@ export function OrganizeMenu({ sortMode, viewMode, onSortChange, onViewChange }:
 
                         <div
                           className={cn(
-                            'pointer-events-none absolute bottom-[calc(100%+0.45rem)] left-1/2 -translate-x-1/2 rounded-md border border-white/10 bg-[rgba(11,9,16,0.92)] px-2 py-1 text-[0.62rem] font-medium text-white shadow-[0_12px_28px_rgba(0,0,0,0.36)] transition-all duration-300 ease-in-out whitespace-nowrap',
+                            'pointer-events-none absolute bottom-[calc(100%+0.45rem)] left-1/2 -translate-x-1/2 rounded-md border border-white/10 bg-[rgba(11,9,16,0.92)] px-2 py-1 text-[0.62rem] font-medium text-white shadow-[0_12px_28px_rgba(0,0,0,0.36)] transition-all duration-150 ease-out whitespace-nowrap',
                             tooltipLayout === option.value ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0',
                           )}
                         >
