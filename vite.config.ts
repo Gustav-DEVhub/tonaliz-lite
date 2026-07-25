@@ -21,7 +21,7 @@ export default defineConfig({
       manifest: {
         id: '/',
         name: 'Tonaliz Lite',
-        short_name: 'Tonaliz',
+        short_name: 'Tonaliz Lite',
         description:
           'Independent music discovery PWA with mood-aware visuals, favorites, and a responsive player.',
         theme_color: '#08070A',

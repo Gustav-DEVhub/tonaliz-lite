@@ -127,7 +127,7 @@ export function TrackCard({
             <Button
               type="button"
               size="icon"
-              className="mood-glow size-10 border-transparent bg-black/58 text-white opacity-0 transition-all duration-200 hover:bg-black/72 group-hover/track-actions:translate-y-0 group-hover/track-actions:opacity-100 group-focus-within/track-actions:opacity-100"
+              className="mood-glow size-10 border-transparent bg-black/58 text-white opacity-0 transition-[background-color,opacity,transform] duration-200 hover:bg-black/72 group-hover/track-actions:translate-y-0 group-hover/track-actions:opacity-100 group-focus-within/track-actions:opacity-100"
               onClick={(event) => {
                 stopEvent(event)
                 onPlay()
@@ -151,7 +151,7 @@ export function TrackCard({
           <button
             type="button"
             className={cn(
-              'mt-0.5 rounded-full border p-2 opacity-0 transition-all duration-200 group-hover/track-actions:opacity-100 group-focus-within/track-actions:opacity-100',
+              'mt-0.5 rounded-full border p-2 opacity-0 transition-[background-color,border-color,color,opacity] duration-200 group-hover/track-actions:opacity-100 group-focus-within/track-actions:opacity-100',
               isFavorite
                 ? 'border-primary/40 bg-primary/14 text-primary-soft opacity-100'
                 : 'border-border-subtle text-text-muted hover:text-text-primary',

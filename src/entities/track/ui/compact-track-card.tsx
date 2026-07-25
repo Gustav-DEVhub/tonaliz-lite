@@ -35,7 +35,7 @@ export function CompactTrackCard({
         <img src={track.imageUrl} alt={`${track.name} artwork`} className="size-full object-cover" />
         <button
           type="button"
-          className="absolute bottom-2 right-2 inline-flex size-9 items-center justify-center rounded-full border border-white/15 bg-black/60 text-white shadow-lg backdrop-blur-sm"
+          className="absolute bottom-2 right-2 inline-flex size-9 items-center justify-center rounded-full border border-white/15 bg-black/72 text-white shadow-lg"
           onClick={onPlay}
           aria-label={isCurrent && isPlaying ? 'Pause track' : 'Play track'}
         >

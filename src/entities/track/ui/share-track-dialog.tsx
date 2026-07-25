@@ -76,7 +76,7 @@ export function ShareTrackDialog({ track, open, onOpenChange }: ShareTrackDialog
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[130] hidden bg-black/70 backdrop-blur-sm data-[state=closed]:animate-out data-[state=open]:animate-in lg:block" />
+        <Dialog.Overlay className="fixed inset-0 z-[130] hidden bg-black/78 data-[state=closed]:animate-out data-[state=open]:animate-in lg:block" />
         <Dialog.Content
           className="editorial-panel fixed left-1/2 top-1/2 z-[131] hidden w-[min(34rem,calc(100vw-3rem))] -translate-x-1/2 -translate-y-1/2 rounded-[1.7rem] border border-white/12 p-5 shadow-[0_28px_90px_rgba(0,0,0,0.58)] outline-none lg:block"
           onClick={(event) => event.stopPropagation()}

@@ -523,7 +523,7 @@ function QuickResumeCard({
       }}
       {...longPressBind}
       className={cn(
-        'track-card-surface group/track-actions cursor-pointer overflow-hidden rounded-[1.45rem] p-3 transition-all duration-300 hover:-translate-y-0.5 hover:brightness-[1.04]',
+        'track-card-surface group/track-actions cursor-pointer overflow-hidden rounded-[1.45rem] p-3 transition-[background-color,border-color,transform] duration-200 hover:-translate-y-0.5',
         compact ? 'min-h-[11.75rem]' : 'min-h-[13.5rem]',
         isCurrent && 'mood-glow ring-1 ring-white/10',
       )}

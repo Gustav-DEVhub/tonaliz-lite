@@ -342,8 +342,8 @@ export function BottomPlayer() {
                   variant="ghost"
                   className={
                     desktopRightRailMode === 'queue'
-                      ? 'size-10 scale-[1.03] border border-[color:var(--mood-accent)]/45 bg-[color:var(--mood-accent)]/18 text-text-primary shadow-[0_12px_28px_color-mix(in_srgb,var(--mood-accent)_18%,transparent)] transition-all duration-200 ease-out'
-                      : 'size-10 border border-border-subtle bg-white/6 text-text-secondary transition-all duration-200 ease-out hover:scale-[1.02] hover:bg-white/10 hover:text-text-primary active:scale-[0.97]'
+                      ? 'size-10 scale-[1.03] border border-[color:var(--mood-accent)]/45 bg-[color:var(--mood-accent)]/18 text-text-primary shadow-[0_12px_28px_color-mix(in_srgb,var(--mood-accent)_18%,transparent)] transition-[background-color,border-color,box-shadow,transform] duration-200 ease-out'
+                      : 'size-10 border border-border-subtle bg-white/6 text-text-secondary transition-[background-color,color,transform] duration-200 ease-out hover:scale-[1.02] hover:bg-white/10 hover:text-text-primary active:scale-[0.97]'
                   }
                   onClick={toggleQueueRail}
                   aria-pressed={desktopRightRailMode === 'queue'}

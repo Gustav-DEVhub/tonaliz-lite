@@ -564,7 +564,7 @@ export function ArtistProfilePage() {
           <>
             <motion.button
               type="button"
-              className="fixed inset-0 z-[118] bg-black/55 backdrop-blur-[2px] lg:hidden"
+              className="fixed inset-0 z-[118] bg-black/62 lg:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -574,7 +574,7 @@ export function ArtistProfilePage() {
             />
             <motion.div
               ref={artistTracksSheetRef}
-              className="fixed inset-x-0 bottom-0 z-[119] rounded-t-[1.6rem] border border-white/10 bg-[linear-gradient(180deg,rgba(21,17,28,0.98),rgba(11,9,16,0.98))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-18px_54px_rgba(0,0,0,0.42)] lg:hidden"
+              className="mobile-sheet-surface fixed inset-x-0 bottom-0 z-[119] rounded-t-[1.6rem] border border-white/10 bg-[linear-gradient(180deg,rgba(21,17,28,0.98),rgba(11,9,16,0.98))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-18px_54px_rgba(0,0,0,0.42)] lg:hidden"
               initial={{ y: '100%', opacity: 0.9 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: '100%', opacity: 0.9 }}

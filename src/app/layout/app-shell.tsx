@@ -562,7 +562,7 @@ export function AppShell() {
     <div style={moodStyle} className="relative min-h-screen overflow-x-hidden lg:h-screen lg:overflow-hidden">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--mood-accent)_14%,transparent),transparent_34%)]" />
 
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/6 bg-app-bg/88 backdrop-blur-xl">
+      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/6 bg-app-bg/96 lg:bg-app-bg/88 lg:backdrop-blur-xl">
         <div className="px-3.5 py-3 sm:px-5 sm:py-3.5 lg:hidden lg:px-8">
           <div className="flex w-full items-center justify-between gap-4">
             <button
@@ -900,7 +900,7 @@ export function AppShell() {
       <ToastViewport />
       <nav
         className={cn(
-          'fixed inset-x-0 bottom-0 z-50 border-t border-white/6 bg-app-bg/92 px-2.5 py-1.5 pb-[calc(env(safe-area-inset-bottom)+0.45rem)] backdrop-blur-xl md:hidden',
+          'fixed inset-x-0 bottom-0 z-50 border-t border-white/6 bg-app-bg/96 px-2.5 py-1.5 pb-[calc(env(safe-area-inset-bottom)+0.45rem)] md:hidden',
           isExpandedPlayerPage && 'hidden',
         )}
       >

@@ -2479,7 +2479,7 @@ export function LibraryPage() {
         <>
           <motion.button
             type="button"
-            className="fixed inset-0 z-[118] bg-black/55 backdrop-blur-[2px] lg:hidden"
+            className="fixed inset-0 z-[118] bg-black/62 lg:hidden"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2488,7 +2488,7 @@ export function LibraryPage() {
             aria-label="Close sort options"
           />
           <motion.div
-            className="fixed inset-x-0 bottom-0 z-[119] rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(22,18,29,0.98),rgba(10,8,16,0.99))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-22px_58px_rgba(0,0,0,0.44)] lg:hidden"
+            className="mobile-sheet-surface fixed inset-x-0 bottom-0 z-[119] rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(22,18,29,0.98),rgba(10,8,16,0.99))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-22px_58px_rgba(0,0,0,0.44)] lg:hidden"
             initial={{ opacity: 0, y: 96 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 96 }}
@@ -2556,7 +2556,7 @@ export function LibraryPage() {
         <>
           <motion.button
             type="button"
-            className="fixed inset-0 z-[118] bg-black/55 backdrop-blur-[2px] lg:hidden"
+            className="fixed inset-0 z-[118] bg-black/62 lg:hidden"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2565,7 +2565,7 @@ export function LibraryPage() {
             aria-label="Close more options"
           />
           <motion.div
-            className="fixed inset-x-0 bottom-0 z-[119] rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(22,18,29,0.98),rgba(10,8,16,0.99))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-22px_58px_rgba(0,0,0,0.44)] lg:hidden"
+            className="mobile-sheet-surface fixed inset-x-0 bottom-0 z-[119] rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(22,18,29,0.98),rgba(10,8,16,0.99))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-22px_58px_rgba(0,0,0,0.44)] lg:hidden"
             initial={{ opacity: 0, y: 96 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 96 }}
@@ -2849,7 +2849,7 @@ export function LibraryPage() {
         <>
           <motion.button
             type="button"
-            className="fixed inset-0 z-[118] bg-black/55 backdrop-blur-[2px] lg:hidden"
+            className="fixed inset-0 z-[118] bg-black/62 lg:hidden"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

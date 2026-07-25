@@ -131,6 +131,11 @@ input {
   contain-intrinsic-size: auto 7rem;
 }
 
+.mobile-sheet-surface {
+  contain: layout paint;
+  backface-visibility: hidden;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

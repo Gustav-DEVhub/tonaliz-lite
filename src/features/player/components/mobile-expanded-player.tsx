@@ -321,7 +321,7 @@ export function MobileExpandedPlayer({
       {open ? (
         <>
           <motion.div
-            className="fixed inset-0 z-[88] bg-black/72 backdrop-blur-md md:hidden"
+            className="fixed inset-0 z-[88] bg-black/82 md:hidden"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
