@@ -1,5 +1,5 @@
 import { Heart, Pause, Play } from 'lucide-react'
-import { useEffect, useState, type KeyboardEvent, type MouseEvent } from 'react'
+import { useState, type KeyboardEvent, type MouseEvent } from 'react'
 import type { Track } from '@/entities/track/model/types'
 import { TrackActionMenu } from '@/entities/track/ui/track-action-menu'
 import { MobileTrackActionSheet } from '@/entities/track/ui/mobile-track-action-sheet'
@@ -32,9 +32,6 @@ export function TrackCard({
   onPlayNext: (track: Track) => void
   onAddToQueue: (track: Track) => void
 }) {
-  const [isDesktopViewport, setIsDesktopViewport] = useState(() =>
-    typeof window === 'undefined' ? true : window.matchMedia('(min-width: 1024px)').matches,
-  )
   const [isMobileActionSheetOpen, setIsMobileActionSheetOpen] = useState(false)
   const showToast = useToastStore((state) => state.showToast)
   const mood = detectMood(track)
@@ -43,13 +40,6 @@ export function TrackCard({
     setIsMobileActionSheetOpen(true)
   })
 
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(min-width: 1024px)')
-    const handleViewportChange = () => setIsDesktopViewport(mediaQuery.matches)
-
-    mediaQuery.addEventListener('change', handleViewportChange)
-    return () => mediaQuery.removeEventListener('change', handleViewportChange)
-  }, [])
   const playIcon =
     isCurrent && isPlaying ? <Pause className="size-4" /> : <Play className="ml-0.5 size-4" />
 
@@ -77,8 +67,7 @@ export function TrackCard({
 
   return (
     <>
-      {isDesktopViewport ? (
-        <article
+      <article
         role="button"
         tabIndex={0}
         onClick={onOpenArtist}
@@ -181,10 +170,9 @@ export function TrackCard({
             ))}
           </div>
         ) : null}
-        </article>
-      ) : (
+      </article>
 
-        <article
+      <article
         role="button"
         tabIndex={0}
         onClick={onOpenArtist}
@@ -272,8 +260,7 @@ export function TrackCard({
             ))}
           </div>
         ) : null}
-        </article>
-      )}
+      </article>
 
       {isMobileActionSheetOpen ? (
         <MobileTrackActionSheet

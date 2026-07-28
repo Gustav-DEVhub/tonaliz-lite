@@ -422,10 +422,10 @@ export function AppShell() {
   const effectiveRightPanelWidth = isRightPanelCompact ? RIGHT_PANEL_COMPACT_WIDTH : rightPanelWidth
   const desktopGridStyle = !isExpandedPlayerPage
     ? ({
-        gridTemplateColumns: showDesktopRailHost
+        '--desktop-grid-template': showDesktopRailHost
           ? `${effectiveLeftSidebarWidth}px minmax(0, 1fr) ${effectiveRightPanelWidth}px`
           : `${effectiveLeftSidebarWidth}px minmax(0, 1fr)`,
-      } satisfies CSSProperties)
+      } as CSSProperties)
     : undefined
   const toggleLeftSidebarMode = () => {
     const nextMode: SidebarMode = isLeftSidebarCollapsed ? 'expanded' : 'compact'
@@ -698,7 +698,7 @@ export function AppShell() {
       >
         <div
           className={cn(
-            'lg:grid lg:h-full lg:min-h-0 lg:gap-6 transition-[grid-template-columns] duration-[180ms] ease-out xl:gap-8',
+            'lg:grid lg:h-full lg:min-h-0 lg:grid-cols-[var(--desktop-grid-template)] lg:gap-6 transition-[grid-template-columns] duration-[180ms] ease-out xl:gap-8',
             isRightPanelDragging ? 'lg:transition-none' : '',
           )}
           style={desktopGridStyle}

@@ -1,5 +1,5 @@
 import { Heart, MoreVertical, Pause, Play } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { Track } from '@/entities/track/model/types'
 import {
   DEFAULT_DESKTOP_TRACK_COLUMNS,
@@ -69,9 +69,6 @@ export function TrackListRow({
   desktopColumns?: DesktopTrackColumnsConfig
   desktopSourceText?: string | null
 }) {
-  const [isDesktopViewport, setIsDesktopViewport] = useState(() =>
-    typeof window === 'undefined' ? true : window.matchMedia('(min-width: 1024px)').matches,
-  )
   const [isMobileActionSheetOpen, setIsMobileActionSheetOpen] = useState(false)
   const showToast = useToastStore((state) => state.showToast)
   const mood = detectMood(track)
@@ -80,13 +77,6 @@ export function TrackListRow({
     setIsMobileActionSheetOpen(true)
   })
 
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(min-width: 1024px)')
-    const handleViewportChange = () => setIsDesktopViewport(mediaQuery.matches)
-
-    mediaQuery.addEventListener('change', handleViewportChange)
-    return () => mediaQuery.removeEventListener('change', handleViewportChange)
-  }, [])
   const resolvedDesktopSource = desktopSourceText ?? resolveDesktopTrackSource(track)
   const resolvedDesktopColumns = {
     artist: desktopColumns.artist,
@@ -219,7 +209,7 @@ export function TrackListRow({
               onClick={(event) => event.stopPropagation()}
               onKeyDown={(event) => event.stopPropagation()}
             >
-              {isDesktopViewport && !enableDesktopActionsMenu ? (
+              {!enableDesktopActionsMenu ? (
                 <TrackActionMenu
                   track={track}
                   onPlayNext={onPlayNext}
@@ -232,7 +222,7 @@ export function TrackListRow({
                 />
               ) : null}
 
-              {isDesktopViewport && enableDesktopActionsMenu ? (
+              {enableDesktopActionsMenu ? (
                 <TrackActionMenu
                   track={track}
                   variant="desktop"
