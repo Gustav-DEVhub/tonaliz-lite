@@ -39,7 +39,7 @@ export async function getArtistTracks({
   }
 
   const primaryResults = await requestTracks(primaryUrl)
-  if (primaryResults.length > 0 || !normalizedArtistName || artistId) {
+  if (primaryResults.length > 0 || !normalizedArtistName) {
     return primaryResults
   }
 

@@ -145,7 +145,7 @@ export function BottomPlayer() {
         />
       </Suspense>
 
-      <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 px-2.5 md:bottom-0 md:px-4 lg:px-6 xl:px-8 2xl:px-10">
+      <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 px-2.5 md:bottom-0 md:px-4 lg:px-0">
       <div className="editorial-panel mood-glow relative w-full overflow-hidden rounded-[1.1rem] border-white/8 px-3 py-2 sm:rounded-[1.35rem] sm:px-4 sm:py-4">
         <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,var(--mood-accent),transparent)] md:hidden" />
         {currentTrack ? (

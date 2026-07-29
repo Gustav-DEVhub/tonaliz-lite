@@ -688,7 +688,7 @@ export function AppShell() {
 
       <main
         className={cn(
-          'w-full px-3.5 pt-[5.35rem] sm:px-5 sm:pt-[5.6rem] md:pt-24 lg:h-screen lg:overflow-hidden lg:px-6 lg:pt-[7.1rem] xl:px-8 2xl:px-10',
+          'w-full px-3.5 pt-[5.35rem] sm:px-5 sm:pt-[5.6rem] md:pt-24 lg:h-screen lg:overflow-hidden lg:pl-6 lg:pr-0 lg:pt-[7.1rem] xl:pl-8 xl:pr-0 2xl:pl-10 2xl:pr-0',
           isExpandedPlayerPage
             ? 'pb-8 md:pb-10 lg:pb-8'
             : currentTrack
@@ -801,7 +801,7 @@ export function AppShell() {
           {showDesktopRailHost ? (
             <Suspense fallback={<RailFallback />}>
               {isRightPanelCompact ? (
-                <div className="relative hidden lg:block lg:h-full lg:min-h-0" style={{ width: effectiveRightPanelWidth }}>
+                <div className="relative hidden lg:-mt-8 lg:block lg:h-[calc(100%+2rem)] lg:min-h-0" style={{ width: effectiveRightPanelWidth }}>
                   <CompactRightRail
                     currentTrack={currentTrack}
                     onOpenNowPlaying={expandRightPanel}
@@ -829,7 +829,7 @@ export function AppShell() {
                   </button>
                 </div>
               ) : desktopRightRailMode === 'queue' ? (
-                <div className="relative hidden lg:block lg:h-full lg:min-h-0" style={{ width: effectiveRightPanelWidth }}>
+                <div className="relative hidden lg:-mt-8 lg:block lg:h-[calc(100%+2rem)] lg:min-h-0" style={{ width: effectiveRightPanelWidth }}>
                   <QueuePanel />
                   <button
                     type="button"
@@ -854,7 +854,7 @@ export function AppShell() {
                   </button>
                 </div>
               ) : desktopRightRailMode === 'now_playing' ? (
-                <div className="relative hidden lg:block lg:h-full lg:min-h-0" style={{ width: effectiveRightPanelWidth }}>
+                <div className="relative hidden lg:-mt-8 lg:block lg:h-[calc(100%+2rem)] lg:min-h-0" style={{ width: effectiveRightPanelWidth }}>
                   <NowPlayingPanel />
                   <button
                     type="button"
@@ -879,7 +879,7 @@ export function AppShell() {
                   </button>
                 </div>
               ) : (
-                <div className="relative hidden lg:block lg:h-full lg:min-h-0" style={{ width: effectiveRightPanelWidth }}>
+                <div className="relative hidden lg:-mt-8 lg:block lg:h-[calc(100%+2rem)] lg:min-h-0" style={{ width: effectiveRightPanelWidth }}>
                   <CompactRightRail
                     currentTrack={currentTrack}
                     onOpenNowPlaying={expandRightPanel}

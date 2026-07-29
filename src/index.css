@@ -216,7 +216,8 @@ input {
 
 @media (prefers-reduced-motion: reduce) {
   .playing-bars[data-playing="true"] .playing-bars__bar {
-    animation-duration: calc(var(--playing-bar-duration) * 1.55);
+    animation-duration: calc(var(--playing-bar-duration) * 1.55) !important;
+    animation-iteration-count: infinite !important;
     opacity: 0.9;
   }
 

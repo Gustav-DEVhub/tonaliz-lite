@@ -1,5 +1,14 @@
 import * as Dialog from '@radix-ui/react-dialog'
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentPropsWithoutRef,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+} from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, useDragControls, useReducedMotion } from 'motion/react'
 import { ArrowLeft, Bookmark, BookmarkCheck, Check, ChevronDown, Clock3, ExternalLink, Grid2X2, Heart, List, ListMusic, ListPlus, MoreHorizontal, MoreVertical, Play, Plus, Search, Share2, Shuffle, UserRound, X } from 'lucide-react'
@@ -11,9 +20,16 @@ import {
 } from '@/entities/track/ui/desktop-track-columns'
 import { DesktopTrackColumnsMenu } from '@/entities/track/ui/desktop-track-columns-menu'
 import { DesktopTrackListHeaderRow } from '@/entities/track/ui/desktop-track-list-header-row'
+import { TrackCard } from '@/entities/track/ui/track-card'
 import { TrackListRow } from '@/entities/track/ui/track-list-row'
+import { useMobileLongPress } from '@/entities/track/ui/use-mobile-long-press'
 import { useDesktopTrackColumns } from '@/entities/track/ui/use-desktop-track-columns'
 import { getArtistRouteTarget } from '@/features/artist/lib/artist-route'
+import {
+  getShelfConfigById,
+  parseShelfCollectionSourceId,
+} from '@/features/discover/lib/exploration-shelves'
+import { loadTrackShelves } from '@/features/discover/lib/load-track-shelves'
 import { AddToPlaylistDialog } from '@/features/library/components/add-to-playlist-dialog'
 import { OrganizeMenu, type OrganizeLayout, type OrganizeSort } from '@/features/library/components/organize-menu'
 import { useFavoritesStore } from '@/features/library/store/use-favorites-store'
@@ -31,6 +47,7 @@ import { ShareLinkDialog } from '@/shared/ui/share-link-dialog'
 import { TrackGridSkeleton } from '@/features/discover/components/track-grid-skeleton'
 import { StatusPanel } from '@/shared/ui/status-panel'
 import { CompactTrackCard } from '@/entities/track/ui/compact-track-card'
+import { getArtistTracks } from '@/lib/jamendo/artist-tracks-service'
 
 type SortOption = 'recently-played' | 'recently-added' | 'title' | 'artist'
 type MobileLibraryCategory = 'all' | 'songs' | 'artists' | 'playlists'
@@ -82,6 +99,17 @@ function SavedArtistArtwork({ artist, className }: { artist: SavedArtistEntry; c
   )
 }
 
+function MobileLongPressCard({
+  onLongPress,
+  ...articleProps
+}: ComponentPropsWithoutRef<'article'> & {
+  onLongPress: () => void
+}) {
+  const longPressBind = useMobileLongPress(onLongPress)
+
+  return <article {...longPressBind} {...articleProps} />
+}
+
 export function LibraryPage() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -101,6 +129,7 @@ export function LibraryPage() {
   const [isNewPlaylistDialogOpen, setIsNewPlaylistDialogOpen] = useState(false)
   const [mobileViewMode, setMobileViewMode] = useState<MobileLibraryViewMode>('grid')
   const [activeMobileCategory, setActiveMobileCategory] = useState<MobileLibraryCategory>('all')
+  const [isMobileLibraryFabCompact, setIsMobileLibraryFabCompact] = useState(false)
   const [desktopCollectionQuery, setDesktopCollectionQuery] = useState('')
   const [desktopCategory, setDesktopCategory] = useState<DesktopLibraryCategory>('all')
   const [detailMoreMenu, setDetailMoreMenu] = useState<null | 'liked' | 'playlist'>(null)
@@ -114,6 +143,7 @@ export function LibraryPage() {
   const [collectionTracksForDialog, setCollectionTracksForDialog] = useState<Track[]>([])
   const [collectionTitleForDialog, setCollectionTitleForDialog] = useState('Playlist')
   const [confirmDialogState, setConfirmDialogState] = useState<ConfirmDialogState>(null)
+  const collectionTracksCacheRef = useRef(new Map<string, Track[]>())
   const [desktopLayout, setDesktopLayout] = useState<OrganizeLayout>(() => {
     if (typeof window === 'undefined') {
       return 'default-list'
@@ -300,7 +330,7 @@ export function LibraryPage() {
       sourceId: collection.sourceId,
       name: collection.title,
       imageUrl: collection.imageUrl,
-      count: artistTracks.length,
+      count: Math.max(collection.trackCount ?? 0, artistTracks.length),
       sampleTrack: artistTracks[0] ?? null,
       routePath: collection.routePath,
       externalUrl: collection.externalUrl,
@@ -342,6 +372,33 @@ export function LibraryPage() {
     : 'all'
   const desktopViewMode: 'list' | 'grid' =
     desktopLayout === 'compact-grid' || desktopLayout === 'default-grid' ? 'grid' : 'list'
+
+  useEffect(() => {
+    let previousScrollY = window.scrollY
+
+    const handleMobileScroll = () => {
+      if (window.innerWidth >= 1024) {
+        return
+      }
+
+      const nextScrollY = window.scrollY
+      const scrollDelta = nextScrollY - previousScrollY
+
+      if (nextScrollY <= 24) {
+        setIsMobileLibraryFabCompact(false)
+      } else if (scrollDelta > 8) {
+        setIsMobileLibraryFabCompact(true)
+      } else if (scrollDelta < -8) {
+        setIsMobileLibraryFabCompact(false)
+      }
+
+      previousScrollY = nextScrollY
+    }
+
+    window.addEventListener('scroll', handleMobileScroll, { passive: true })
+
+    return () => window.removeEventListener('scroll', handleMobileScroll)
+  }, [])
 
   useEffect(() => {
     window.localStorage.setItem('libraryLayout', desktopLayout)
@@ -678,6 +735,90 @@ export function LibraryPage() {
     ?? artistTracksByKey.get(artist.name.toLowerCase())
     ?? []
 
+  const loadArtistTracksForCollection = async (artist: SavedArtistEntry) => {
+    const cacheKey = `artist:${artist.sourceId}`
+    const cachedTracks = collectionTracksCacheRef.current.get(cacheKey)
+
+    if (cachedTracks) {
+      return cachedTracks
+    }
+
+    const availableTracks = getArtistTracksForCollection(artist)
+    if (availableTracks.length > 0) {
+      collectionTracksCacheRef.current.set(cacheKey, availableTracks)
+      return availableTracks
+    }
+
+    try {
+      const routeUrl = artist.routePath
+        ? new URL(artist.routePath, window.location.origin)
+        : null
+      const routeArtistId = routeUrl?.pathname.match(/^\/artist\/([^/]+)$/)?.[1]
+      const artistId = routeArtistId ? decodeURIComponent(routeArtistId) : (/^\d+$/.test(artist.sourceId) ? artist.sourceId : undefined)
+      const artistName = routeUrl?.searchParams.get('name')?.trim() || artist.name
+      const loadedTracks = await getArtistTracks({ artistId, artistName })
+
+      if (loadedTracks.length > 0) {
+        collectionTracksCacheRef.current.set(cacheKey, loadedTracks)
+      }
+      return loadedTracks
+    } catch {
+      return []
+    }
+  }
+
+  const loadSavedCollectionTracks = async (collection: SavedCollection) => {
+    const cacheKey = `collection:${collection.id}`
+    const cachedTracks = collectionTracksCacheRef.current.get(cacheKey)
+
+    if (cachedTracks) {
+      return cachedTracks
+    }
+
+    if (collection.type === 'shelf-collection') {
+      const parsedCollection = parseShelfCollectionSourceId(collection.sourceId)
+      const shelfConfig = parsedCollection ? getShelfConfigById(parsedCollection.shelfId) : null
+
+      if (!shelfConfig) {
+        return []
+      }
+
+      try {
+        const shelves = await loadTrackShelves([shelfConfig])
+        const loadedTracks = shelves[0]?.tracks ?? []
+        if (loadedTracks.length > 0) {
+          collectionTracksCacheRef.current.set(cacheKey, loadedTracks)
+        }
+        return loadedTracks
+      } catch {
+        return []
+      }
+    }
+
+    if (collection.type === 'collection' && collection.sourceId.startsWith('artist-tracks:')) {
+      const artistSourceId = collection.sourceId.slice('artist-tracks:'.length)
+      const routeUrl = collection.routePath
+        ? new URL(collection.routePath, window.location.origin)
+        : null
+      const routeArtistId = routeUrl?.pathname.match(/^\/artist\/([^/]+)$/)?.[1]
+      const artistId = routeArtistId ? decodeURIComponent(routeArtistId) : (/^\d+$/.test(artistSourceId) ? artistSourceId : undefined)
+      const artistName = routeUrl?.searchParams.get('name')?.trim()
+        || collection.title.replace(/\s+Artist tracks$/i, '')
+
+      try {
+        const loadedTracks = await getArtistTracks({ artistId, artistName })
+        if (loadedTracks.length > 0) {
+          collectionTracksCacheRef.current.set(cacheKey, loadedTracks)
+        }
+        return loadedTracks
+      } catch {
+        return []
+      }
+    }
+
+    return []
+  }
+
   const getArtistRoutePath = (artist: SavedArtistEntry) => {
     if (artist.routePath) {
       return artist.routePath
@@ -711,8 +852,8 @@ export function LibraryPage() {
     return routePath ? `${window.location.origin}${routePath}` : artist.externalUrl
   }
 
-  const playArtistCollection = (artist: SavedArtistEntry) => {
-    const artistTracks = getArtistTracksForCollection(artist)
+  const playArtistCollection = async (artist: SavedArtistEntry) => {
+    const artistTracks = await loadArtistTracksForCollection(artist)
 
     if (artistTracks.length === 0) {
       showToast({ title: 'No tracks to play', variant: 'warning' })
@@ -722,17 +863,24 @@ export function LibraryPage() {
     playCollection(artistTracks, createPlaylist(`${artist.name} playlist`, 'library', artistTracks))
   }
 
-  const shuffleArtistCollection = (artist: SavedArtistEntry) => {
-    const artistTracks = getArtistTracksForCollection(artist)
+  const shuffleArtistCollection = async (artist: SavedArtistEntry) => {
+    const artistTracks = await loadArtistTracksForCollection(artist)
     shuffleCollection(artist.name, artistTracks)
   }
 
-  const addArtistToQueue = (artist: SavedArtistEntry) => {
-    addCollectionToQueue(getArtistTracksForCollection(artist))
+  const addArtistToQueue = async (artist: SavedArtistEntry) => {
+    addCollectionToQueue(await loadArtistTracksForCollection(artist))
   }
 
-  const openArtistPlaylistDialog = (artist: SavedArtistEntry) => {
-    openCollectionPlaylistDialog(getArtistTracksForCollection(artist), artist.name)
+  const openArtistPlaylistDialog = async (artist: SavedArtistEntry) => {
+    const artistTracks = await loadArtistTracksForCollection(artist)
+
+    if (artistTracks.length === 0) {
+      showToast({ title: 'No tracks to add', variant: 'warning' })
+      return
+    }
+
+    openCollectionPlaylistDialog(artistTracks, artist.name)
   }
 
   const handleShareArtistCollection = async (artist: SavedArtistEntry) => {
@@ -773,6 +921,37 @@ export function LibraryPage() {
     if (collection.externalUrl && typeof window !== 'undefined') {
       window.open(collection.externalUrl, '_blank', 'noreferrer')
     }
+  }
+
+  const playSavedCollection = async (collection: SavedCollection) => {
+    const tracks = await loadSavedCollectionTracks(collection)
+
+    if (tracks.length === 0) {
+      showToast({ title: 'No tracks to play', variant: 'warning' })
+      return
+    }
+
+    playCollection(tracks, createPlaylist(collection.title, 'library', tracks))
+  }
+
+  const shuffleSavedCollection = async (collection: SavedCollection) => {
+    const tracks = await loadSavedCollectionTracks(collection)
+    shuffleCollection(collection.title, tracks)
+  }
+
+  const addSavedCollectionToQueue = async (collection: SavedCollection) => {
+    addCollectionToQueue(await loadSavedCollectionTracks(collection))
+  }
+
+  const openSavedCollectionPlaylistDialog = async (collection: SavedCollection) => {
+    const tracks = await loadSavedCollectionTracks(collection)
+
+    if (tracks.length === 0) {
+      showToast({ title: 'No tracks to add', variant: 'warning' })
+      return
+    }
+
+    openCollectionPlaylistDialog(tracks, collection.title)
   }
 
   const getSavedCollectionSubtitle = (collection: SavedCollection) => {
@@ -959,8 +1138,8 @@ export function LibraryPage() {
     + sortedMobileSavedPlaylistCollections.length
     + sortedMobileArtists.length
   const desktopGridClassName = desktopLayout === 'compact-grid'
-    ? 'grid grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))] gap-2'
-    : 'grid grid-cols-[repeat(auto-fill,minmax(8.75rem,1fr))] gap-3'
+    ? 'grid grid-cols-[repeat(auto-fill,minmax(7.5rem,8.5rem))] justify-start gap-2'
+    : 'grid grid-cols-[repeat(auto-fill,minmax(8.75rem,10rem))] justify-start gap-3'
   const desktopListSpacingClassName = desktopLayout === 'compact-list' ? 'space-y-2' : 'space-y-3'
 
   const renderHistoryGroup = (title: string, tracks: typeof historyEntries, mode: 'mobile' | 'desktop' = 'desktop') => tracks.length > 0 ? (
@@ -1046,6 +1225,25 @@ export function LibraryPage() {
     )
   }
 
+  const renderDesktopSavedTrackCard = (track: Track) => {
+    const isCurrent = currentTrack?.id === track.id
+
+    return (
+      <TrackCard
+        key={`desktop-saved-track-card-${track.id}`}
+        track={track}
+        isCurrent={isCurrent}
+        isPlaying={isCurrent && isPlaying}
+        isFavorite={favoriteTrackIds.has(track.id)}
+        onPlay={() => playFromContext(track, savedTracksPlaylist)}
+        onOpenArtist={() => openArtistFromTrack(track)}
+        onToggleFavorite={() => void toggleFavorite(track)}
+        onPlayNext={playNextInQueue}
+        onAddToQueue={addToQueue}
+      />
+    )
+  }
+
   const renderMobileSavedTrackRow = (track: Track) => {
     const isCurrent = currentTrack?.id === track.id
 
@@ -1109,8 +1307,9 @@ export function LibraryPage() {
   }
 
   const renderMobileArtistRow = (artist: (typeof savedArtists)[number]) => (
-    <article
+    <MobileLongPressCard
       key={artist.name}
+      onLongPress={() => setMobileItemMenuTarget({ type: 'artist', sourceId: artist.sourceId })}
       role="button"
       tabIndex={0}
       className="track-card-surface flex w-full items-center gap-3 rounded-[1.25rem] px-3 py-3 text-left transition-colors active:bg-white/8"
@@ -1140,15 +1339,16 @@ export function LibraryPage() {
       >
         <MoreVertical className="size-4" />
       </button>
-    </article>
+    </MobileLongPressCard>
   )
 
   const renderMobileArtistCard = (artist: (typeof savedArtists)[number]) => (
-    <article
+    <MobileLongPressCard
       key={`artist-grid-${artist.name}`}
+      onLongPress={() => setMobileItemMenuTarget({ type: 'artist', sourceId: artist.sourceId })}
       role="button"
       tabIndex={0}
-      className="track-card-surface min-w-0 rounded-[1.35rem] p-2.5 text-left transition-colors active:bg-white/8"
+      className="track-card-surface min-w-0 h-full rounded-[1.35rem] p-2.5 text-left transition-colors active:bg-white/8"
       onClick={() => openSavedArtist(artist)}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -1164,18 +1364,7 @@ export function LibraryPage() {
       <span className="mt-1 block truncate text-[0.78rem] text-text-secondary">
         {artist.count > 0 ? `Artist · ${artist.count} saved ${artist.count === 1 ? 'song' : 'songs'}` : 'Saved artist'}
       </span>
-      <button
-        type="button"
-        className="mt-2 inline-flex size-9 items-center justify-center rounded-full border border-white/10 text-text-muted transition-colors active:bg-white/8 active:text-text-primary"
-        onClick={(event) => {
-          event.stopPropagation()
-          setMobileItemMenuTarget({ type: 'artist', sourceId: artist.sourceId })
-        }}
-        aria-label="More artist options"
-      >
-        <MoreVertical className="size-4" />
-      </button>
-    </article>
+    </MobileLongPressCard>
   )
 
   const renderDesktopArtistItem = (artist: (typeof savedArtists)[number]) => (
@@ -1186,7 +1375,7 @@ export function LibraryPage() {
       className={cn(
         'group/library-card track-card-surface relative w-full text-left transition-[background-color,border-color,box-shadow,transform] duration-200 hover:border-white/12 hover:bg-white/10 hover:shadow-[0_4px_12px_rgba(0,0,0,0.3)]',
         desktopViewMode === 'grid'
-          ? 'rounded-lg p-2.5 hover:scale-[1.02]'
+          ? 'h-full rounded-lg p-2.5 hover:scale-[1.02]'
           : 'flex min-h-20 items-center gap-3 rounded-lg px-3 py-2.5',
       )}
       onClick={() => openSavedArtist(artist)}
@@ -1216,7 +1405,7 @@ export function LibraryPage() {
                 className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-white/6 hover:text-text-primary"
                 onClick={(event) => {
                   event.stopPropagation()
-                  playArtistCollection(artist)
+                  void playArtistCollection(artist)
                   setDesktopItemMenuTarget(null)
                 }}
               >
@@ -1228,7 +1417,7 @@ export function LibraryPage() {
                 className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-white/6 hover:text-text-primary"
                 onClick={(event) => {
                   event.stopPropagation()
-                  shuffleArtistCollection(artist)
+                  void shuffleArtistCollection(artist)
                   setDesktopItemMenuTarget(null)
                 }}
               >
@@ -1240,7 +1429,7 @@ export function LibraryPage() {
                 className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-white/6 hover:text-text-primary"
                 onClick={(event) => {
                   event.stopPropagation()
-                  addArtistToQueue(artist)
+                  void addArtistToQueue(artist)
                   setDesktopItemMenuTarget(null)
                 }}
               >
@@ -1252,7 +1441,7 @@ export function LibraryPage() {
                 className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-white/6 hover:text-text-primary"
                 onClick={(event) => {
                   event.stopPropagation()
-                  openArtistPlaylistDialog(artist)
+                  void openArtistPlaylistDialog(artist)
                   setDesktopItemMenuTarget(null)
                 }}
               >
@@ -1313,8 +1502,8 @@ export function LibraryPage() {
       )}
       <span
         className={cn(
-          'shrink-0 overflow-hidden bg-white/5 ring-1 ring-white/10',
-          desktopViewMode === 'grid' ? 'mb-2.5 aspect-square w-full rounded-lg' : 'size-12 rounded-lg',
+          'block shrink-0 overflow-hidden bg-white/5 ring-1 ring-white/10',
+          desktopViewMode === 'grid' ? 'mx-auto mb-2.5 aspect-square w-full rounded-full p-1' : 'size-12 rounded-full',
         )}
       >
       <SavedArtistArtwork artist={artist} className="size-full object-cover" />
@@ -1338,7 +1527,8 @@ export function LibraryPage() {
   }
 
   const renderLikedSongsCollection = (mode: 'list' | 'grid' = 'list') => (
-    <article
+    <MobileLongPressCard
+      onLongPress={() => setDetailMoreMenu('liked')}
       role="button"
       tabIndex={0}
       className={cn(
@@ -1369,13 +1559,10 @@ export function LibraryPage() {
           {`${favorites.length} ${favorites.length === 1 ? 'track' : 'tracks'}`}
         </span>
       </span>
-      {mode === 'list' || mode === 'grid' ? (
+      {mode === 'list' ? (
         <button
           type="button"
-          className={cn(
-            'inline-flex size-9 items-center justify-center rounded-full border border-white/10 text-text-muted transition-colors active:bg-white/8 active:text-text-primary lg:hidden',
-            mode === 'grid' && 'mt-2',
-          )}
+          className="inline-flex size-9 items-center justify-center rounded-full border border-white/10 text-text-muted transition-colors active:bg-white/8 active:text-text-primary lg:hidden"
           onClick={(event) => {
             event.preventDefault()
             event.stopPropagation()
@@ -1476,17 +1663,27 @@ export function LibraryPage() {
           )}
         </>,
       )}
-    </article>
+    </MobileLongPressCard>
   )
 
-  const renderSavedCollectionCard = (collection: SavedCollection, mode: 'mobile' | 'desktop' = 'desktop') => (
-    <article
+  const renderSavedCollectionCard = (
+    collection: SavedCollection,
+    mode: 'mobile-list' | 'mobile-grid' | 'desktop' = 'desktop',
+  ) => (
+    <MobileLongPressCard
       key={collection.id}
+      onLongPress={() => setMobileItemMenuTarget({ type: 'saved-collection', id: collection.id })}
       role="button"
       tabIndex={0}
       className={cn(
         'group/library-card track-card-surface relative w-full text-left transition-[background-color,border-color,box-shadow,transform] duration-200 hover:border-white/12 hover:bg-card-hover',
-        mode === 'mobile' ? 'rounded-[1.35rem] p-2.5' : desktopViewMode === 'grid' ? 'rounded-lg p-3 hover:scale-[1.02]' : 'flex min-h-20 items-center gap-3 rounded-lg px-3 py-2.5',
+        mode === 'mobile-list'
+          ? 'flex min-h-20 items-center gap-3 rounded-[1.25rem] px-3 py-3'
+          : mode === 'mobile-grid'
+            ? 'h-full rounded-[1.35rem] p-2.5'
+            : desktopViewMode === 'grid'
+              ? 'h-full rounded-lg p-3 hover:scale-[1.02]'
+              : 'flex min-h-20 items-center gap-3 rounded-lg px-3 py-2.5',
       )}
       onClick={() => openSavedCollection(collection)}
       onKeyDown={(event) => {
@@ -1510,6 +1707,54 @@ export function LibraryPage() {
           {renderDesktopItemPopover(
             { type: 'saved-collection', id: collection.id },
             <>
+              <button
+                type="button"
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-white/6 hover:text-text-primary"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  setDesktopItemMenuTarget(null)
+                  void playSavedCollection(collection)
+                }}
+              >
+                <Play className="size-4" />
+                Play
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-white/6 hover:text-text-primary"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  setDesktopItemMenuTarget(null)
+                  void shuffleSavedCollection(collection)
+                }}
+              >
+                <Shuffle className="size-4" />
+                Shuffle
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-white/6 hover:text-text-primary"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  setDesktopItemMenuTarget(null)
+                  void addSavedCollectionToQueue(collection)
+                }}
+              >
+                <ListPlus className="size-4" />
+                Add to queue
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-white/6 hover:text-text-primary"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  setDesktopItemMenuTarget(null)
+                  void openSavedCollectionPlaylistDialog(collection)
+                }}
+              >
+                <ListPlus className="size-4" />
+                Add to playlist
+              </button>
               <button
                 type="button"
                 className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-white/6 hover:text-text-primary"
@@ -1552,27 +1797,31 @@ export function LibraryPage() {
       <span
         className={cn(
           'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-[1rem] bg-primary/12 text-primary-soft',
-          mode === 'mobile' || desktopViewMode === 'grid' ? 'mb-2.5 aspect-square w-full' : 'size-12 rounded-lg',
+          mode === 'mobile-list'
+            ? 'size-13 rounded-[0.95rem]'
+            : mode === 'mobile-grid' || desktopViewMode === 'grid'
+              ? 'mb-2.5 aspect-square w-full'
+              : 'size-12 rounded-lg',
         )}
       >
         {collection.imageUrl ? (
           <img src={collection.imageUrl} alt={`${collection.title} cover`} className="size-full object-cover" />
         ) : (
-          <Bookmark className={mode === 'mobile' || desktopViewMode === 'grid' ? 'size-8' : 'size-5'} />
+          <Bookmark className={mode === 'mobile-grid' || desktopViewMode === 'grid' ? 'size-8' : 'size-5'} />
         )}
       </span>
       <span className="min-w-0 flex-1">
-        <span className={cn('block font-heading leading-snug text-text-primary', mode === 'mobile' || desktopViewMode === 'grid' ? 'line-clamp-2 text-[0.9rem]' : 'line-clamp-2 text-[0.95rem]')}>
+        <span className={cn('block font-heading leading-snug text-text-primary', mode === 'mobile-grid' || desktopViewMode === 'grid' ? 'line-clamp-2 text-[0.9rem]' : 'line-clamp-2 text-[0.95rem]')}>
           {collection.title}
         </span>
         <span className="mt-1 block truncate text-[0.8rem] text-text-secondary">
           {getSavedCollectionSubtitle(collection)}
         </span>
       </span>
-      {mode === 'mobile' ? (
+      {mode === 'mobile-list' ? (
         <button
           type="button"
-          className="inline-flex size-9 items-center justify-center rounded-full border border-white/10 text-text-muted transition-colors active:bg-white/8 active:text-text-primary"
+          className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-white/10 text-text-muted transition-colors active:bg-white/8 active:text-text-primary"
           onClick={(event) => {
             event.stopPropagation()
             setMobileItemMenuTarget({ type: 'saved-collection', id: collection.id })
@@ -1582,7 +1831,7 @@ export function LibraryPage() {
           <MoreVertical className="size-4" />
         </button>
       ) : null}
-    </article>
+    </MobileLongPressCard>
   )
 
   const playSelectedPlaylist = () => {
@@ -1602,8 +1851,9 @@ export function LibraryPage() {
     const isDesktopList = mode === 'desktop' && (desktopLayout === 'compact-list' || desktopLayout === 'default-list')
 
     return (
-      <article
+      <MobileLongPressCard
         key={playlist.id}
+        onLongPress={() => setMobileItemMenuTarget({ type: 'local-playlist', id: playlist.id })}
         role="button"
         tabIndex={0}
         className={cn(
@@ -1753,7 +2003,7 @@ export function LibraryPage() {
             <span className={cn('mt-1 hidden line-clamp-2 text-text-muted lg:block', isDesktopCompactGrid ? 'text-[0.68rem]' : 'text-xs')}>{playlist.description}</span>
           ) : null}
         </span>
-        {mode === 'mobile' || isMobileGrid ? (
+        {mode === 'mobile' ? (
           <button
             type="button"
             className={cn(
@@ -1769,7 +2019,7 @@ export function LibraryPage() {
             <MoreVertical className="size-4" />
           </button>
         ) : null}
-      </article>
+      </MobileLongPressCard>
     )
   }
 
@@ -2035,14 +2285,14 @@ export function LibraryPage() {
                     <div className="grid grid-cols-2 gap-3">
                       {renderLikedSongsCollection('grid')}
                       {sortedMobilePlaylists.map((playlist) => renderPlaylistItem(playlist, 'mobile-grid'))}
-                      {sortedMobileSavedPlaylistCollections.map((collection) => renderSavedCollectionCard(collection, 'mobile'))}
+                      {sortedMobileSavedPlaylistCollections.map((collection) => renderSavedCollectionCard(collection, 'mobile-grid'))}
                       {sortedMobileArtists.map(renderMobileArtistCard)}
                     </div>
                   ) : (
                     <>
                       {renderLikedSongsCollection('list')}
                       {sortedMobilePlaylists.map((playlist) => renderPlaylistItem(playlist, 'mobile'))}
-                      {sortedMobileSavedPlaylistCollections.map((collection) => renderSavedCollectionCard(collection, 'mobile'))}
+                      {sortedMobileSavedPlaylistCollections.map((collection) => renderSavedCollectionCard(collection, 'mobile-list'))}
                       {sortedMobileArtists.map(renderMobileArtistRow)}
                     </>
                   )
@@ -2072,12 +2322,12 @@ export function LibraryPage() {
                   mobileViewMode === 'grid' ? (
                     <div className="grid grid-cols-2 gap-3">
                       {sortedMobilePlaylists.map((playlist) => renderPlaylistItem(playlist, 'mobile-grid'))}
-                      {sortedMobileSavedPlaylistCollections.map((collection) => renderSavedCollectionCard(collection, 'mobile'))}
+                      {sortedMobileSavedPlaylistCollections.map((collection) => renderSavedCollectionCard(collection, 'mobile-grid'))}
                     </div>
                   ) : (
                     <>
                       {sortedMobilePlaylists.map((playlist) => renderPlaylistItem(playlist, 'mobile'))}
-                      {sortedMobileSavedPlaylistCollections.map((collection) => renderSavedCollectionCard(collection, 'mobile'))}
+                      {sortedMobileSavedPlaylistCollections.map((collection) => renderSavedCollectionCard(collection, 'mobile-list'))}
                     </>
                   )
                 ) : (
@@ -2133,13 +2383,27 @@ export function LibraryPage() {
                       <h2 className="font-heading text-2xl text-text-primary">Songs</h2>
                       <p className="mt-1 text-sm text-text-secondary">Tracks saved or liked in your Library.</p>
                     </div>
-                    <span className="font-mono text-[0.68rem] uppercase tracking-[0.18em] text-text-muted">
-                      {filteredDesktopSavedTracks.length} {filteredDesktopSavedTracks.length === 1 ? 'song' : 'songs'}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-[0.68rem] uppercase tracking-[0.18em] text-text-muted">
+                        {filteredDesktopSavedTracks.length} {filteredDesktopSavedTracks.length === 1 ? 'song' : 'songs'}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="gap-2"
+                        onClick={() => shuffleCollection('Songs', filteredDesktopSavedTracks)}
+                        aria-label="Play everything randomly"
+                      >
+                        <Shuffle className="size-4" />
+                        Play everything randomly
+                      </Button>
+                    </div>
                   </div>
                   {filteredDesktopSavedTracks.length > 0 ? (
-                    <div className={desktopListSpacingClassName}>
-                      {filteredDesktopSavedTracks.map((track, index) => renderSavedTrackRow(track, index + 1))}
+                    <div className={desktopViewMode === 'grid' ? desktopGridClassName : desktopListSpacingClassName}>
+                      {desktopViewMode === 'grid'
+                        ? filteredDesktopSavedTracks.map(renderDesktopSavedTrackCard)
+                        : filteredDesktopSavedTracks.map((track, index) => renderSavedTrackRow(track, index + 1))}
                     </div>
                   ) : (
                     <EmptyState title="No songs yet" description="Save or like tracks and they will appear here." className="min-h-44" />
@@ -2186,15 +2450,46 @@ export function LibraryPage() {
         ) : null}
       </div>
     </div>
-    {libraryView === 'library' ? (
+    {libraryView === 'library' && (resolvedMobileCategory === 'all' || resolvedMobileCategory === 'playlists') ? (
       <button
         type="button"
-        className="fixed bottom-[calc(env(safe-area-inset-bottom)+7.25rem)] right-4 z-[80] inline-flex items-center gap-2 rounded-full border border-primary/35 bg-primary px-4 py-3 font-heading text-sm text-white shadow-[0_16px_36px_rgba(0,0,0,0.38)] transition-transform active:scale-[0.98] lg:hidden"
+        className={cn(
+          'fixed bottom-[calc(env(safe-area-inset-bottom)+9rem)] right-4 z-[80] inline-flex h-12 items-center overflow-hidden rounded-full border border-primary/35 bg-primary font-heading text-sm text-white shadow-[0_16px_36px_rgba(0,0,0,0.38)] transition-[gap,padding] duration-150 ease-out active:scale-[0.98] lg:hidden',
+          isMobileLibraryFabCompact ? 'gap-0 px-3.5' : 'gap-2 px-4',
+        )}
         onClick={() => setIsNewPlaylistDialogOpen(true)}
         aria-label="Create new playlist"
       >
-        <Plus className="size-4" />
-        New
+        <Plus className="size-4 shrink-0" />
+        <span
+          className={cn(
+            'overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-150 ease-out',
+            isMobileLibraryFabCompact ? 'max-w-0 opacity-0' : 'max-w-16 opacity-100',
+          )}
+        >
+          New
+        </span>
+      </button>
+    ) : null}
+    {libraryView === 'library' && resolvedMobileCategory === 'songs' ? (
+      <button
+        type="button"
+        className={cn(
+          'fixed bottom-[calc(env(safe-area-inset-bottom)+9rem)] right-4 z-[80] inline-flex h-12 items-center overflow-hidden rounded-full border border-primary/35 bg-primary font-heading text-sm text-white shadow-[0_16px_36px_rgba(0,0,0,0.38)] transition-[gap,padding] duration-150 ease-out active:scale-[0.98] lg:hidden',
+          isMobileLibraryFabCompact ? 'gap-0 px-3.5' : 'gap-2 px-4',
+        )}
+        onClick={() => shuffleCollection('Songs', sortedSavedTracks)}
+        aria-label="Play everything randomly"
+      >
+        <Shuffle className="size-4 shrink-0" />
+        <span
+          className={cn(
+            'overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-150 ease-out',
+            isMobileLibraryFabCompact ? 'max-w-0 opacity-0' : 'max-w-[13rem] opacity-100',
+          )}
+        >
+          Play everything randomly
+        </span>
       </button>
     ) : null}
     {libraryView === 'liked' ? (
@@ -2696,6 +2991,50 @@ export function LibraryPage() {
                     className="flex w-full items-center gap-3 rounded-[1.1rem] px-3 py-3 text-left text-[0.98rem] text-text-secondary transition-colors active:bg-white/8"
                     onClick={() => {
                       setMobileItemMenuTarget(null)
+                      void playSavedCollection(mobileMenuSavedCollection)
+                    }}
+                  >
+                    <Play className="size-4.5" />
+                    Play
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-[1.1rem] px-3 py-3 text-left text-[0.98rem] text-text-secondary transition-colors active:bg-white/8"
+                    onClick={() => {
+                      setMobileItemMenuTarget(null)
+                      void shuffleSavedCollection(mobileMenuSavedCollection)
+                    }}
+                  >
+                    <Shuffle className="size-4.5" />
+                    Shuffle
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-[1.1rem] px-3 py-3 text-left text-[0.98rem] text-text-secondary transition-colors active:bg-white/8"
+                    onClick={() => {
+                      setMobileItemMenuTarget(null)
+                      void addSavedCollectionToQueue(mobileMenuSavedCollection)
+                    }}
+                  >
+                    <ListPlus className="size-4.5" />
+                    Add to queue
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-[1.1rem] px-3 py-3 text-left text-[0.98rem] text-text-secondary transition-colors active:bg-white/8"
+                    onClick={() => {
+                      setMobileItemMenuTarget(null)
+                      void openSavedCollectionPlaylistDialog(mobileMenuSavedCollection)
+                    }}
+                  >
+                    <ListPlus className="size-4.5" />
+                    Add to playlist
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-[1.1rem] px-3 py-3 text-left text-[0.98rem] text-text-secondary transition-colors active:bg-white/8"
+                    onClick={() => {
+                      setMobileItemMenuTarget(null)
                       openSavedCollection(mobileMenuSavedCollection)
                     }}
                   >
@@ -2745,7 +3084,7 @@ export function LibraryPage() {
                     className="flex w-full items-center gap-3 rounded-[1.1rem] px-3 py-3 text-left text-[0.98rem] text-text-secondary transition-colors active:bg-white/8"
                     onClick={() => {
                       setMobileItemMenuTarget(null)
-                      playArtistCollection(mobileMenuArtist)
+                       void playArtistCollection(mobileMenuArtist)
                     }}
                   >
                     <Play className="size-4.5" />
@@ -2756,7 +3095,7 @@ export function LibraryPage() {
                     className="flex w-full items-center gap-3 rounded-[1.1rem] px-3 py-3 text-left text-[0.98rem] text-text-secondary transition-colors active:bg-white/8"
                     onClick={() => {
                       setMobileItemMenuTarget(null)
-                      shuffleArtistCollection(mobileMenuArtist)
+                       void shuffleArtistCollection(mobileMenuArtist)
                     }}
                   >
                     <Shuffle className="size-4.5" />
@@ -2767,7 +3106,7 @@ export function LibraryPage() {
                     className="flex w-full items-center gap-3 rounded-[1.1rem] px-3 py-3 text-left text-[0.98rem] text-text-secondary transition-colors active:bg-white/8"
                     onClick={() => {
                       setMobileItemMenuTarget(null)
-                      addArtistToQueue(mobileMenuArtist)
+                       void addArtistToQueue(mobileMenuArtist)
                     }}
                   >
                     <ListPlus className="size-4.5" />
@@ -2778,7 +3117,7 @@ export function LibraryPage() {
                     className="flex w-full items-center gap-3 rounded-[1.1rem] px-3 py-3 text-left text-[0.98rem] text-text-secondary transition-colors active:bg-white/8"
                     onClick={() => {
                       setMobileItemMenuTarget(null)
-                      openArtistPlaylistDialog(mobileMenuArtist)
+                       void openArtistPlaylistDialog(mobileMenuArtist)
                     }}
                   >
                     <ListPlus className="size-4.5" />

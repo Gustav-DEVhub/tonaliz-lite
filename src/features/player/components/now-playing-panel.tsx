@@ -135,11 +135,11 @@ export function NowPlayingPanel() {
   }
 
   return (
-    <aside className="relative hidden min-w-0 lg:flex lg:h-full lg:min-h-0 lg:justify-end">
+    <aside className="relative hidden min-w-0 overflow-hidden lg:flex lg:h-full lg:min-h-0 lg:w-full lg:justify-end">
       <DesktopRailToggle variant="open-button" onClick={closeDesktopRail} />
 
-      <div className="w-full lg:h-full lg:min-h-0">
-        <div className="editorial-panel mood-glow group/rail overflow-hidden rounded-[1.8rem] border-white/8 p-3 lg:flex lg:h-full lg:min-h-0 lg:flex-col xl:p-3.5">
+      <div className="h-full min-h-0 w-full min-w-0 overflow-hidden">
+        <div className="editorial-panel mood-glow group/rail flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-[1.8rem] border-white/8 p-3 xl:p-3.5">
           <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,var(--mood-accent),transparent)]" />
 
           <div className="flex justify-end gap-2 pl-12">
@@ -163,7 +163,7 @@ export function NowPlayingPanel() {
             </div>
           </div>
 
-          <div className="mt-2 space-y-3 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:pr-2 scrollbar-subtle">
+          <div className="mt-2 min-h-0 w-full min-w-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto overscroll-contain pr-2 scrollbar-subtle">
             <button
               type="button"
               onClick={openExpandedPlayer}
@@ -173,7 +173,7 @@ export function NowPlayingPanel() {
                 <img
                   src={currentTrack.imageUrl}
                   alt={`${currentTrack.name} artwork`}
-                  className="aspect-square max-h-[min(36vh,20rem)] w-full rounded-[1.15rem] object-cover shadow-[0_18px_44px_rgba(0,0,0,0.42)]"
+                  className="aspect-square w-full rounded-[1.15rem] object-cover shadow-[0_18px_44px_rgba(0,0,0,0.42)]"
                 />
               </div>
             </button>

@@ -1,7 +1,8 @@
-import { Heart, MoreVertical, Pause, Play } from 'lucide-react'
+import { Heart, Pause, Play } from 'lucide-react'
 import { useState } from 'react'
 import type { Track } from '@/entities/track/model/types'
 import { MobileTrackActionSheet } from '@/entities/track/ui/mobile-track-action-sheet'
+import { useMobileLongPress } from '@/entities/track/ui/use-mobile-long-press'
 import { cn, formatDuration, truncateText } from '@/shared/lib/utils'
 
 interface CompactTrackCardProps {
@@ -28,9 +29,13 @@ export function CompactTrackCard({
   onViewArtist,
 }: CompactTrackCardProps) {
   const [isActionSheetOpen, setIsActionSheetOpen] = useState(false)
+  const longPressBind = useMobileLongPress(() => setIsActionSheetOpen(true))
 
   return (
-    <article className={cn('content-visibility-auto track-card-surface flex min-w-0 flex-col gap-3 rounded-[1.2rem] p-2.5', isCurrent && 'mood-glow ring-1 ring-white/10')}>
+    <article
+      {...longPressBind}
+      className={cn('content-visibility-auto track-card-surface flex min-w-0 flex-col gap-3 rounded-[1.2rem] p-2.5', isCurrent && 'mood-glow ring-1 ring-white/10')}
+    >
       <div className="relative aspect-square overflow-hidden rounded-[0.9rem] bg-white/5">
         <img src={track.imageUrl} alt={`${track.name} artwork`} className="size-full object-cover" />
         <button
@@ -44,26 +49,13 @@ export function CompactTrackCard({
       </div>
 
       <div className="min-w-0">
-        <div className="flex min-w-0 items-start gap-2">
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate font-heading text-[0.9rem] text-text-primary" title={track.name}>
-              {truncateText(track.name, 42)}
-            </h3>
-            <p className="mt-1 truncate text-[0.76rem] text-text-secondary" title={track.artistName}>
-              {truncateText(track.artistName, 34)}
-            </p>
-          </div>
-          <button
-            type="button"
-            className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-text-muted active:bg-white/8 active:text-text-primary"
-            onClick={(event) => {
-              event.stopPropagation()
-              setIsActionSheetOpen(true)
-            }}
-            aria-label="More track options"
-          >
-            <MoreVertical className="size-4" />
-          </button>
+        <div className="min-w-0">
+          <h3 className="truncate font-heading text-[0.9rem] text-text-primary" title={track.name}>
+            {truncateText(track.name, 42)}
+          </h3>
+          <p className="mt-1 truncate text-[0.76rem] text-text-secondary" title={track.artistName}>
+            {truncateText(track.artistName, 34)}
+          </p>
         </div>
 
         <div className="mt-2 flex items-center justify-between gap-2 text-[0.72rem] text-text-muted">

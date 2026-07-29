@@ -32,7 +32,8 @@ export function DesktopRailToggle({
     <button
       type="button"
       onClick={onClick}
-      aria-label="Close side rail"
+      aria-label="Collapse right panel"
+      title="Collapse right panel"
       className={cn(
         'absolute left-4 top-4 z-20 inline-flex size-10 items-center justify-center rounded-full border border-white/12 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--mood-accent)_18%,rgba(8,7,10,0.92)),rgba(10,9,13,0.96))] text-text-primary shadow-[0_10px_26px_rgba(0,0,0,0.28)] transition-colors hover:bg-[linear-gradient(180deg,color-mix(in_srgb,var(--mood-accent)_24%,rgba(8,7,10,0.98)),rgba(14,12,18,0.98))]',
         className,
