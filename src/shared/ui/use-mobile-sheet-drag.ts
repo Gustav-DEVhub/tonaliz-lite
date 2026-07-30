@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useRef,
   type MouseEvent as ReactMouseEvent,
@@ -12,23 +13,30 @@ type DragStart = {
 }
 
 export function useMobileSheetDrag(onDismiss: () => void) {
-  const surfaceRef = useRef<HTMLDivElement | null>(null)
+  const surfaceNodeRef = useRef<HTMLDivElement | null>(null)
   const dragStartRef = useRef<DragStart | null>(null)
   const dragDistanceRef = useRef(0)
   const suppressClickRef = useRef(false)
   const resetTimerRef = useRef<number | null>(null)
   const onDismissRef = useRef(onDismiss)
-  onDismissRef.current = onDismiss
 
-  const clearResetTimer = () => {
+  useEffect(() => {
+    onDismissRef.current = onDismiss
+  }, [onDismiss])
+
+  const setSurfaceNode = useCallback((node: HTMLDivElement | null) => {
+    surfaceNodeRef.current = node
+  }, [])
+
+  const clearResetTimer = useCallback(() => {
     if (resetTimerRef.current !== null) {
       window.clearTimeout(resetTimerRef.current)
       resetTimerRef.current = null
     }
-  }
+  }, [])
 
-  const resetSurface = () => {
-    const surface = surfaceRef.current
+  const resetSurface = useCallback(() => {
+    const surface = surfaceNodeRef.current
     if (!surface) {
       return
     }
@@ -41,13 +49,13 @@ export function useMobileSheetDrag(onDismiss: () => void) {
       surface.style.willChange = ''
       resetTimerRef.current = null
     }, 170)
-  }
+  }, [clearResetTimer])
 
   useEffect(() => {
     return clearResetTimer
-  }, [])
+  }, [clearResetTimer])
 
-  const onPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+  const onHandlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (event.pointerType === 'mouse' && event.button !== 0) {
       return
     }
@@ -62,13 +70,14 @@ export function useMobileSheetDrag(onDismiss: () => void) {
     suppressClickRef.current = false
     event.currentTarget.setPointerCapture(event.pointerId)
 
-    if (surfaceRef.current) {
-      surfaceRef.current.style.transition = 'none'
-      surfaceRef.current.style.willChange = 'transform'
+    const surface = surfaceNodeRef.current
+    if (surface) {
+      surface.style.transition = 'none'
+      surface.style.willChange = 'transform'
     }
   }
 
-  const onPointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+  const onHandlePointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const dragStart = dragStartRef.current
     if (!dragStart || dragStart.pointerId !== event.pointerId) {
       return
@@ -78,8 +87,9 @@ export function useMobileSheetDrag(onDismiss: () => void) {
     dragDistanceRef.current = distance
     suppressClickRef.current = distance > 4
 
-    if (surfaceRef.current) {
-      surfaceRef.current.style.transform = `translate3d(0, ${distance}px, 0)`
+    const surface = surfaceNodeRef.current
+    if (surface) {
+      surface.style.transform = `translate3d(0, ${distance}px, 0)`
     }
 
     event.preventDefault()
@@ -111,7 +121,7 @@ export function useMobileSheetDrag(onDismiss: () => void) {
     resetSurface()
   }
 
-  const onClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
+  const onHandleClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
     if (suppressClickRef.current) {
       suppressClickRef.current = false
       event.preventDefault()
@@ -123,13 +133,11 @@ export function useMobileSheetDrag(onDismiss: () => void) {
   }
 
   return {
-    surfaceRef,
-    dragHandleProps: {
-      onClick,
-      onPointerDown,
-      onPointerMove,
-      onPointerUp: (event: ReactPointerEvent<HTMLButtonElement>) => finishDrag(event),
-      onPointerCancel: (event: ReactPointerEvent<HTMLButtonElement>) => finishDrag(event, true),
-    },
+    setSurfaceNode,
+    onHandleClick,
+    onHandlePointerDown,
+    onHandlePointerMove,
+    onHandlePointerUp: (event: ReactPointerEvent<HTMLButtonElement>) => finishDrag(event),
+    onHandlePointerCancel: (event: ReactPointerEvent<HTMLButtonElement>) => finishDrag(event, true),
   }
 }

@@ -67,7 +67,14 @@ export function MobileTrackActionSheet({
   const jamendoTrackUrl = getJamendoTrackUrl(trackUrl)
   const hasNativeShare = canUseNativeShare()
   const close = () => onOpenChange(false)
-  const { surfaceRef, dragHandleProps } = useMobileSheetDrag(close)
+  const {
+    setSurfaceNode,
+    onHandleClick,
+    onHandlePointerDown,
+    onHandlePointerMove,
+    onHandlePointerUp,
+    onHandlePointerCancel,
+  } = useMobileSheetDrag(close)
 
   const showFeedback = (message: string, variant: ToastVariant = 'success') => {
     if (feedback) {
@@ -145,14 +152,18 @@ export function MobileTrackActionSheet({
           />
 
           <div
-            ref={surfaceRef}
+            ref={setSurfaceNode}
             className="mobile-sheet-enter mobile-sheet-surface fixed inset-x-0 bottom-0 z-[119] max-h-[88dvh] overflow-y-auto rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(22,18,29,0.99),rgba(10,8,16,1))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-16px_42px_rgba(0,0,0,0.38)] lg:hidden"
             onClick={(event) => event.stopPropagation()}
           >
             <button
               type="button"
               className="mx-auto mb-3 block h-1.5 w-14 touch-none rounded-full bg-white/18"
-              {...dragHandleProps}
+              onClick={onHandleClick}
+              onPointerDown={onHandlePointerDown}
+              onPointerMove={onHandlePointerMove}
+              onPointerUp={onHandlePointerUp}
+              onPointerCancel={onHandlePointerCancel}
               aria-label="Drag down to close track actions"
             />
 

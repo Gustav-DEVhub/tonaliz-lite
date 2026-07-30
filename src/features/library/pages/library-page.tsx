@@ -136,9 +136,30 @@ export function LibraryPage() {
   const [shareDialogTarget, setShareDialogTarget] = useState<null | 'liked' | 'playlist'>(null)
   const [shareSavedCollectionTarget, setShareSavedCollectionTarget] = useState<SavedCollection | null>(null)
   const [shareArtistTarget, setShareArtistTarget] = useState<SavedArtistEntry | null>(null)
-  const mobileSortSheetDrag = useMobileSheetDrag(() => setIsMobileSortSheetOpen(false))
-  const mobileItemSheetDrag = useMobileSheetDrag(() => setMobileItemMenuTarget(null))
-  const mobileDetailSheetDrag = useMobileSheetDrag(() => setDetailMoreMenu(null))
+  const {
+    setSurfaceNode: setMobileSortSheetSurfaceNode,
+    onHandleClick: onMobileSortSheetHandleClick,
+    onHandlePointerDown: onMobileSortSheetHandlePointerDown,
+    onHandlePointerMove: onMobileSortSheetHandlePointerMove,
+    onHandlePointerUp: onMobileSortSheetHandlePointerUp,
+    onHandlePointerCancel: onMobileSortSheetHandlePointerCancel,
+  } = useMobileSheetDrag(() => setIsMobileSortSheetOpen(false))
+  const {
+    setSurfaceNode: setMobileItemSheetSurfaceNode,
+    onHandleClick: onMobileItemSheetHandleClick,
+    onHandlePointerDown: onMobileItemSheetHandlePointerDown,
+    onHandlePointerMove: onMobileItemSheetHandlePointerMove,
+    onHandlePointerUp: onMobileItemSheetHandlePointerUp,
+    onHandlePointerCancel: onMobileItemSheetHandlePointerCancel,
+  } = useMobileSheetDrag(() => setMobileItemMenuTarget(null))
+  const {
+    setSurfaceNode: setMobileDetailSheetSurfaceNode,
+    onHandleClick: onMobileDetailSheetHandleClick,
+    onHandlePointerDown: onMobileDetailSheetHandlePointerDown,
+    onHandlePointerMove: onMobileDetailSheetHandlePointerMove,
+    onHandlePointerUp: onMobileDetailSheetHandlePointerUp,
+    onHandlePointerCancel: onMobileDetailSheetHandlePointerCancel,
+  } = useMobileSheetDrag(() => setDetailMoreMenu(null))
   const [isAddCollectionToPlaylistOpen, setIsAddCollectionToPlaylistOpen] = useState(false)
   const [collectionTracksForDialog, setCollectionTracksForDialog] = useState<Track[]>([])
   const [collectionTitleForDialog, setCollectionTitleForDialog] = useState('Playlist')
@@ -2794,14 +2815,18 @@ export function LibraryPage() {
             aria-label="Close sort options"
           />
           <div
-            ref={mobileSortSheetDrag.surfaceRef}
+            ref={setMobileSortSheetSurfaceNode}
             className="mobile-sheet-enter mobile-sheet-surface fixed inset-x-0 bottom-0 z-[119] max-h-[88dvh] overflow-y-auto rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(22,18,29,0.99),rgba(10,8,16,1))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-16px_42px_rgba(0,0,0,0.38)] lg:hidden"
             onClick={(event) => event.stopPropagation()}
           >
             <button
               type="button"
               className="mx-auto mb-3 block h-1.5 w-14 touch-none rounded-full bg-white/18"
-              {...mobileSortSheetDrag.dragHandleProps}
+              onClick={onMobileSortSheetHandleClick}
+              onPointerDown={onMobileSortSheetHandlePointerDown}
+              onPointerMove={onMobileSortSheetHandlePointerMove}
+              onPointerUp={onMobileSortSheetHandlePointerUp}
+              onPointerCancel={onMobileSortSheetHandlePointerCancel}
               aria-label="Drag down to close sort options"
             />
             <div className="mb-4 flex items-center justify-between gap-3">
@@ -2843,14 +2868,18 @@ export function LibraryPage() {
             aria-label="Close more options"
           />
           <div
-            ref={mobileItemSheetDrag.surfaceRef}
+            ref={setMobileItemSheetSurfaceNode}
             className="mobile-sheet-enter mobile-sheet-surface fixed inset-x-0 bottom-0 z-[119] max-h-[88dvh] overflow-y-auto rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(22,18,29,0.99),rgba(10,8,16,1))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-16px_42px_rgba(0,0,0,0.38)] lg:hidden"
             onClick={(event) => event.stopPropagation()}
           >
             <button
               type="button"
               className="mx-auto mb-3 block h-1.5 w-14 touch-none rounded-full bg-white/18"
-              {...mobileItemSheetDrag.dragHandleProps}
+              onClick={onMobileItemSheetHandleClick}
+              onPointerDown={onMobileItemSheetHandlePointerDown}
+              onPointerMove={onMobileItemSheetHandlePointerMove}
+              onPointerUp={onMobileItemSheetHandlePointerUp}
+              onPointerCancel={onMobileItemSheetHandlePointerCancel}
               aria-label="Drag down to close more options"
             />
             <div className="mb-4 flex items-center justify-between gap-3">
@@ -3152,14 +3181,18 @@ export function LibraryPage() {
             aria-label="Close more options"
           />
           <div
-            ref={mobileDetailSheetDrag.surfaceRef}
+            ref={setMobileDetailSheetSurfaceNode}
             className="mobile-sheet-enter mobile-sheet-surface fixed inset-x-0 bottom-0 z-[119] max-h-[88dvh] overflow-y-auto rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(22,18,29,0.99),rgba(10,8,16,1))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-16px_42px_rgba(0,0,0,0.38)] lg:hidden"
             onClick={(event) => event.stopPropagation()}
           >
             <button
               type="button"
               className="mx-auto mb-3 block h-1.5 w-14 touch-none rounded-full bg-white/18"
-              {...mobileDetailSheetDrag.dragHandleProps}
+              onClick={onMobileDetailSheetHandleClick}
+              onPointerDown={onMobileDetailSheetHandlePointerDown}
+              onPointerMove={onMobileDetailSheetHandlePointerMove}
+              onPointerUp={onMobileDetailSheetHandlePointerUp}
+              onPointerCancel={onMobileDetailSheetHandlePointerCancel}
               aria-label="Drag down to close more options"
             />
             <div className="mb-4 flex items-center justify-between gap-3">
