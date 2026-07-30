@@ -1,6 +1,7 @@
 import { create } from 'zustand'
-import type { SavedCollection, SavedCollectionType } from '@/entities/track/model/types'
+import type { SavedCollection, SavedCollectionType, Track } from '@/entities/track/model/types'
 import {
+  cacheSavedCollectionTracks,
   getSavedCollections,
   removeSavedCollection,
   saveCollection,
@@ -13,6 +14,7 @@ interface SavedCollectionsState {
   error: string | null
   loadSavedCollections: () => Promise<void>
   saveCollection: (input: SaveCollectionInput) => Promise<SavedCollection>
+  cacheCollectionTracks: (type: SavedCollectionType, sourceId: string, tracks: Track[]) => Promise<void>
   removeCollection: (type: SavedCollectionType, sourceId: string) => Promise<void>
   isSaved: (type: SavedCollectionType, sourceId: string) => boolean
 }
@@ -51,6 +53,29 @@ export const useSavedCollectionsStore = create<SavedCollectionsState>((set, get)
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Could not save collection.',
+      })
+      throw error
+    }
+  },
+  cacheCollectionTracks: async (type, sourceId, tracks) => {
+    try {
+      const collection = await cacheSavedCollectionTracks(type, sourceId, tracks)
+
+      if (!collection) {
+        return
+      }
+
+      set((state) => ({
+        collections: state.collections.map((item) => (
+          item.type === collection.type && item.sourceId === collection.sourceId
+            ? collection
+            : item
+        )),
+        error: null,
+      }))
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Could not cache collection tracks.',
       })
       throw error
     }

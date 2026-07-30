@@ -117,18 +117,12 @@ export function MobileExpandedPlayer({
   const artistJamendoUrl = currentTrack?.artistShareUrl ?? null
   const favoriteTrackIds = useMemo(() => new Set(favorites.map((favorite) => favorite.id)), [favorites])
   const motionFactor = shouldReduceMotion ? 0.65 : 1
-  const overlaySpring = {
-    type: 'spring' as const,
-    stiffness: 360 + 80 * motionFactor,
-    damping: 34,
-    mass: 0.68,
-  }
-  const queueSheetSpring = {
-    type: 'spring' as const,
-    stiffness: 400 + 60 * motionFactor,
-    damping: 36,
-    mass: 0.62,
-  }
+  const overlayTransition = shouldReduceMotion
+    ? { duration: 0.01, ease: 'linear' as const }
+    : { duration: 0.16, ease: [0.22, 1, 0.36, 1] as const }
+  const queueSheetTransition = shouldReduceMotion
+    ? { duration: 0.01, ease: 'linear' as const }
+    : { duration: 0.18, ease: [0.22, 1, 0.36, 1] as const }
   const subtleSpring = {
     type: 'spring' as const,
     stiffness: 420 + 70 * motionFactor,
@@ -325,7 +319,7 @@ export function MobileExpandedPlayer({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 * motionFactor, ease: 'easeOut' }}
+            transition={{ duration: shouldReduceMotion ? 0.01 : 0.1, ease: 'easeOut' }}
             onClick={handleCloseOverlay}
           />
 
@@ -345,10 +339,10 @@ export function MobileExpandedPlayer({
               }
             }}
             className="fixed inset-0 z-[90] md:hidden"
-            initial={{ opacity: 0, y: 56 * motionFactor, scale: 0.992 }}
+            initial={{ opacity: 0, y: 24 * motionFactor }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 52 * motionFactor, scale: 0.992 }}
-            transition={overlaySpring}
+            exit={{ opacity: 0, y: 18 * motionFactor }}
+            transition={overlayTransition}
           >
             <div
               className="relative flex h-[100dvh] flex-col overflow-hidden bg-[radial-gradient(circle_at_top,color-mix(in_srgb,var(--mood-accent)_20%,transparent),transparent_38%),linear-gradient(180deg,#09070c_0%,#0d0a12_52%,#0a0810_100%)] px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-[calc(env(safe-area-inset-top)+0.85rem)]"
@@ -725,13 +719,13 @@ export function MobileExpandedPlayer({
 
                   <motion.div
                     className="absolute inset-x-0 bottom-0 z-[95] h-[84dvh] overflow-hidden rounded-t-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(19,15,25,0.98),rgba(10,8,16,0.98))] shadow-[0_-18px_48px_rgba(0,0,0,0.34)]"
-                    initial={{ opacity: 0, y: `calc(26dvh + ${48 * motionFactor}px)` }}
+                    initial={{ opacity: 0, y: '28dvh' }}
                     animate={{
                       opacity: 1,
                       y: queueSheetMode === 'peek' ? '26dvh' : 0,
                     }}
-                    exit={{ opacity: 0, y: `calc(26dvh + ${48 * motionFactor}px)` }}
-                    transition={queueSheetSpring}
+                    exit={{ opacity: 0, y: '28dvh' }}
+                    transition={queueSheetTransition}
                     drag="y"
                     dragListener={false}
                     dragControls={queueSheetDragControls}
@@ -1007,15 +1001,17 @@ function QueueSheetRow({
     return (
       <div className="flex items-center gap-3 rounded-[1.2rem] border border-white/10 bg-white/6 px-3 py-3" {...longPressBind}>
         {content}
-        <MobileTrackActionSheet
-          open={isMobileActionSheetOpen}
-          track={track}
-          isFavorite={isFavorite}
-          onOpenChange={setIsMobileActionSheetOpen}
-          onPlay={onPlay}
-          onToggleFavorite={onToggleFavorite}
-          onViewArtist={onViewArtist}
-        />
+        {isMobileActionSheetOpen ? (
+          <MobileTrackActionSheet
+            open
+            track={track}
+            isFavorite={isFavorite}
+            onOpenChange={setIsMobileActionSheetOpen}
+            onPlay={onPlay}
+            onToggleFavorite={onToggleFavorite}
+            onViewArtist={onViewArtist}
+          />
+        ) : null}
       </div>
     )
   }
@@ -1035,15 +1031,17 @@ function QueueSheetRow({
       }}
     >
       {content}
-      <MobileTrackActionSheet
-        open={isMobileActionSheetOpen}
-        track={track}
-        isFavorite={isFavorite}
-        onOpenChange={setIsMobileActionSheetOpen}
-        onPlay={onPlay}
-        onToggleFavorite={onToggleFavorite}
-        onViewArtist={onViewArtist}
-      />
+      {isMobileActionSheetOpen ? (
+        <MobileTrackActionSheet
+          open
+          track={track}
+          isFavorite={isFavorite}
+          onOpenChange={setIsMobileActionSheetOpen}
+          onPlay={onPlay}
+          onToggleFavorite={onToggleFavorite}
+          onViewArtist={onViewArtist}
+        />
+      ) : null}
     </div>
   )
 }

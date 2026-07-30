@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import { motion } from 'motion/react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { cn } from '@/shared/lib/utils'
 
 interface MarqueeTextProps {
@@ -63,24 +62,21 @@ export function MarqueeText({ text, className, duration = 14, disabled = false }
       </span>
 
       {shouldAnimate ? (
-        <motion.span
+        <span
           key={`${text}-${contentWidth}`}
-          className="inline-flex min-w-max items-center whitespace-nowrap"
-          initial={{ x: 0 }}
-          animate={{ x: -(contentWidth + duplicateGapPx) }}
-          transition={{
-            duration,
-            ease: 'linear',
-            repeat: Infinity,
-            repeatDelay: 1.2,
-          }}
-          style={{ willChange: 'transform' }}
+          className="marquee-track inline-flex min-w-max items-center whitespace-nowrap"
+          style={
+            {
+              '--marquee-distance': `-${contentWidth + duplicateGapPx}px`,
+              '--marquee-duration': `${duration}s`,
+            } as CSSProperties
+          }
         >
           <span className="shrink-0 pr-8">{text}</span>
           <span className="shrink-0" aria-hidden="true">
             {text}
           </span>
-        </motion.span>
+        </span>
       ) : (
         <span className="block truncate">{text}</span>
       )}

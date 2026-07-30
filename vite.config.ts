@@ -74,32 +74,47 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          const normalizedId = id.replaceAll('\\', '/')
+
+          if (
+            normalizedId.includes('/react/jsx-runtime')
+            || normalizedId.includes('/react/jsx-dev-runtime')
+            || normalizedId.includes('/react/cjs/react-jsx-runtime')
+          ) {
+            return 'react-vendor'
+          }
+
           if (!id.includes('node_modules')) {
             return undefined
           }
 
-          if (id.includes('react-dom') || id.includes('react/')) {
+          if (normalizedId.includes('/node_modules/react-dom/') || normalizedId.includes('/node_modules/react/')) {
             return 'react-vendor'
           }
 
-          if (id.includes('react-router-dom') || id.includes('@remix-run')) {
+          if (normalizedId.includes('/node_modules/react-router-dom/') || normalizedId.includes('/node_modules/@remix-run/')) {
             return 'router-vendor'
           }
 
-          if (id.includes('motion') || id.includes('framer-motion')) {
-            return 'motion-vendor'
-          }
-
-          if (id.includes('@dnd-kit')) {
+          if (normalizedId.includes('/node_modules/@dnd-kit/')) {
             return 'dnd-vendor'
           }
 
-          if (id.includes('lucide-react')) {
+          if (normalizedId.includes('/node_modules/lucide-react/')) {
             return 'icons-vendor'
           }
 
-          if (id.includes('@radix-ui')) {
+          if (normalizedId.includes('/node_modules/@radix-ui/')) {
             return 'radix-vendor'
+          }
+
+          if (
+            normalizedId.includes('/node_modules/motion/')
+            || normalizedId.includes('/node_modules/framer-motion/')
+            || normalizedId.includes('/node_modules/motion-dom/')
+            || normalizedId.includes('/node_modules/motion-utils/')
+          ) {
+            return undefined
           }
 
           return 'vendor'

@@ -10,7 +10,6 @@ import {
   type ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { AnimatePresence, motion, useDragControls, useReducedMotion } from 'motion/react'
 import { ArrowLeft, Bookmark, BookmarkCheck, Check, ChevronDown, Clock3, ExternalLink, Grid2X2, Heart, List, ListMusic, ListPlus, MoreHorizontal, MoreVertical, Play, Plus, Search, Share2, Shuffle, UserRound, X } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { createPlaylist } from '@/entities/track/lib/create-playlist'
@@ -25,13 +24,9 @@ import { TrackListRow } from '@/entities/track/ui/track-list-row'
 import { useMobileLongPress } from '@/entities/track/ui/use-mobile-long-press'
 import { useDesktopTrackColumns } from '@/entities/track/ui/use-desktop-track-columns'
 import { getArtistRouteTarget } from '@/features/artist/lib/artist-route'
-import {
-  getShelfConfigById,
-  parseShelfCollectionSourceId,
-} from '@/features/discover/lib/exploration-shelves'
-import { loadTrackShelves } from '@/features/discover/lib/load-track-shelves'
 import { AddToPlaylistDialog } from '@/features/library/components/add-to-playlist-dialog'
 import { OrganizeMenu, type OrganizeLayout, type OrganizeSort } from '@/features/library/components/organize-menu'
+import { resolveSavedCollectionTracks } from '@/features/library/lib/resolve-saved-collection-tracks'
 import { useFavoritesStore } from '@/features/library/store/use-favorites-store'
 import { usePlaylistsStore } from '@/features/library/store/use-playlists-store'
 import { useSavedCollectionsStore } from '@/features/library/store/use-saved-collections-store'
@@ -47,7 +42,6 @@ import { ShareLinkDialog } from '@/shared/ui/share-link-dialog'
 import { TrackGridSkeleton } from '@/features/discover/components/track-grid-skeleton'
 import { StatusPanel } from '@/shared/ui/status-panel'
 import { CompactTrackCard } from '@/entities/track/ui/compact-track-card'
-import { getArtistTracks } from '@/lib/jamendo/artist-tracks-service'
 
 type SortOption = 'recently-played' | 'recently-added' | 'title' | 'artist'
 type MobileLibraryCategory = 'all' | 'songs' | 'artists' | 'playlists'
@@ -59,6 +53,8 @@ type SavedArtistEntry = {
   imageUrl: string | null
   count: number
   sampleTrack: Track | null
+  tracks: Track[]
+  collection: SavedCollection
   routePath: string | null
   externalUrl: string | null
 }
@@ -143,7 +139,6 @@ export function LibraryPage() {
   const [collectionTracksForDialog, setCollectionTracksForDialog] = useState<Track[]>([])
   const [collectionTitleForDialog, setCollectionTitleForDialog] = useState('Playlist')
   const [confirmDialogState, setConfirmDialogState] = useState<ConfirmDialogState>(null)
-  const collectionTracksCacheRef = useRef(new Map<string, Track[]>())
   const [desktopLayout, setDesktopLayout] = useState<OrganizeLayout>(() => {
     if (typeof window === 'undefined') {
       return 'default-list'
@@ -155,11 +150,7 @@ export function LibraryPage() {
       : 'default-list'
   })
   const [relativeTimeBase] = useState(() => Date.now())
-  const mobileSortDragControls = useDragControls()
-  const detailMoreDragControls = useDragControls()
-  const mobileItemMenuDragControls = useDragControls()
   const detailMoreMenuRef = useRef<HTMLDivElement | null>(null)
-  const shouldReduceMotion = useReducedMotion()
   const favorites = useFavoritesStore((state) => state.favorites)
   const favoritesHydrating = useFavoritesStore((state) => state.isHydrating)
   const favoritesError = useFavoritesStore((state) => state.error)
@@ -170,6 +161,7 @@ export function LibraryPage() {
   const savedTracksError = useSavedTracksStore((state) => state.error)
   const savedCollections = useSavedCollectionsStore((state) => state.collections)
   const saveSavedCollection = useSavedCollectionsStore((state) => state.saveCollection)
+  const cacheSavedCollectionTracks = useSavedCollectionsStore((state) => state.cacheCollectionTracks)
   const removeSavedCollection = useSavedCollectionsStore((state) => state.removeCollection)
   const isSavedCollection = useSavedCollectionsStore((state) => state.isSaved)
   const historyEntries = useRecentlyPlayedStore((state) => state.entries)
@@ -322,9 +314,12 @@ export function LibraryPage() {
     return new Map([...tracksMap.entries()].map(([artistKey, artistTracks]) => [artistKey, [...artistTracks.values()]]))
   }, [favorites, savedTracks])
   const savedArtists = useMemo(() => savedArtistCollections.map((collection) => {
-    const artistTracks = artistTracksByKey.get(collection.sourceId)
+    const libraryArtistTracks = artistTracksByKey.get(collection.sourceId)
       ?? artistTracksByKey.get(collection.title.toLowerCase())
       ?? []
+    const artistTracks = collection.tracks?.length
+      ? collection.tracks
+      : libraryArtistTracks
 
     return {
       sourceId: collection.sourceId,
@@ -332,6 +327,8 @@ export function LibraryPage() {
       imageUrl: collection.imageUrl,
       count: Math.max(collection.trackCount ?? 0, artistTracks.length),
       sampleTrack: artistTracks[0] ?? null,
+      tracks: artistTracks,
+      collection,
       routePath: collection.routePath,
       externalUrl: collection.externalUrl,
     }
@@ -731,93 +728,97 @@ export function LibraryPage() {
     })
   }
 
-  const getArtistTracksForCollection = (artist: SavedArtistEntry) => artistTracksByKey.get(artist.sourceId)
-    ?? artistTracksByKey.get(artist.name.toLowerCase())
-    ?? []
-
   const loadArtistTracksForCollection = async (artist: SavedArtistEntry) => {
-    const cacheKey = `artist:${artist.sourceId}`
-    const cachedTracks = collectionTracksCacheRef.current.get(cacheKey)
-
-    if (cachedTracks) {
-      return cachedTracks
+    if (artist.tracks.length > 0) {
+      return artist.tracks
     }
 
-    const availableTracks = getArtistTracksForCollection(artist)
-    if (availableTracks.length > 0) {
-      collectionTracksCacheRef.current.set(cacheKey, availableTracks)
-      return availableTracks
+    const loadedTracks = await resolveSavedCollectionTracks(artist.collection)
+
+    if (loadedTracks.length > 0) {
+      await cacheSavedCollectionTracks('artist', artist.sourceId, loadedTracks)
     }
 
-    try {
-      const routeUrl = artist.routePath
-        ? new URL(artist.routePath, window.location.origin)
-        : null
-      const routeArtistId = routeUrl?.pathname.match(/^\/artist\/([^/]+)$/)?.[1]
-      const artistId = routeArtistId ? decodeURIComponent(routeArtistId) : (/^\d+$/.test(artist.sourceId) ? artist.sourceId : undefined)
-      const artistName = routeUrl?.searchParams.get('name')?.trim() || artist.name
-      const loadedTracks = await getArtistTracks({ artistId, artistName })
-
-      if (loadedTracks.length > 0) {
-        collectionTracksCacheRef.current.set(cacheKey, loadedTracks)
-      }
-      return loadedTracks
-    } catch {
-      return []
-    }
+    return loadedTracks
   }
 
   const loadSavedCollectionTracks = async (collection: SavedCollection) => {
-    const cacheKey = `collection:${collection.id}`
-    const cachedTracks = collectionTracksCacheRef.current.get(cacheKey)
+    const loadedTracks = await resolveSavedCollectionTracks(collection)
 
-    if (cachedTracks) {
-      return cachedTracks
+    if (loadedTracks.length > 0 && collection.tracks?.length !== loadedTracks.length) {
+      await cacheSavedCollectionTracks(collection.type, collection.sourceId, loadedTracks)
     }
 
-    if (collection.type === 'shelf-collection') {
-      const parsedCollection = parseShelfCollectionSourceId(collection.sourceId)
-      const shelfConfig = parsedCollection ? getShelfConfigById(parsedCollection.shelfId) : null
-
-      if (!shelfConfig) {
-        return []
-      }
-
-      try {
-        const shelves = await loadTrackShelves([shelfConfig])
-        const loadedTracks = shelves[0]?.tracks ?? []
-        if (loadedTracks.length > 0) {
-          collectionTracksCacheRef.current.set(cacheKey, loadedTracks)
-        }
-        return loadedTracks
-      } catch {
-        return []
-      }
-    }
-
-    if (collection.type === 'collection' && collection.sourceId.startsWith('artist-tracks:')) {
-      const artistSourceId = collection.sourceId.slice('artist-tracks:'.length)
-      const routeUrl = collection.routePath
-        ? new URL(collection.routePath, window.location.origin)
-        : null
-      const routeArtistId = routeUrl?.pathname.match(/^\/artist\/([^/]+)$/)?.[1]
-      const artistId = routeArtistId ? decodeURIComponent(routeArtistId) : (/^\d+$/.test(artistSourceId) ? artistSourceId : undefined)
-      const artistName = routeUrl?.searchParams.get('name')?.trim()
-        || collection.title.replace(/\s+Artist tracks$/i, '')
-
-      try {
-        const loadedTracks = await getArtistTracks({ artistId, artistName })
-        if (loadedTracks.length > 0) {
-          collectionTracksCacheRef.current.set(cacheKey, loadedTracks)
-        }
-        return loadedTracks
-      } catch {
-        return []
-      }
-    }
-
-    return []
+    return loadedTracks
   }
+
+  const collectionsMissingTrackSnapshots = useMemo(
+    () => savedCollections.filter((collection) => {
+      if (collection.tracks?.length) {
+        return false
+      }
+
+      return collection.type === 'artist'
+        || collection.type === 'shelf-collection'
+        || (collection.type === 'collection' && (
+          collection.sourceId.startsWith('artist-tracks:')
+          || collection.routePath?.startsWith('/artist')
+        ))
+    }),
+    [savedCollections],
+  )
+  const missingTrackSnapshotKey = useMemo(
+    () => collectionsMissingTrackSnapshots.map((collection) => collection.id).sort().join('|'),
+    [collectionsMissingTrackSnapshots],
+  )
+
+  useEffect(() => {
+    if (!isOnline || !missingTrackSnapshotKey) {
+      return
+    }
+
+    let isCancelled = false
+    const collectionsToResolve = useSavedCollectionsStore.getState().collections.filter((collection) => (
+      missingTrackSnapshotKey.split('|').includes(collection.id)
+    ))
+
+    void (async () => {
+      const resolvedCollections: Array<{ collection: SavedCollection; tracks: Track[] }> = []
+
+      for (let index = 0; index < collectionsToResolve.length; index += 3) {
+        const batch = collectionsToResolve.slice(index, index + 3)
+        const resolvedBatch = await Promise.all(batch.map(async (collection) => ({
+          collection,
+          tracks: await resolveSavedCollectionTracks(collection),
+        })))
+        resolvedCollections.push(...resolvedBatch)
+
+        if (isCancelled) {
+          return
+        }
+      }
+
+      if (isCancelled) {
+        return
+      }
+
+      await Promise.all(resolvedCollections.map(async ({ collection, tracks }) => {
+        if (tracks.length === 0) {
+          return
+        }
+
+        try {
+          await cacheSavedCollectionTracks(collection.type, collection.sourceId, tracks)
+        } catch {
+          // The resolved in-memory snapshot remains available for this session.
+        }
+      }))
+    })()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [cacheSavedCollectionTracks, isOnline, missingTrackSnapshotKey])
 
   const getArtistRoutePath = (artist: SavedArtistEntry) => {
     if (artist.routePath) {
@@ -1037,6 +1038,7 @@ export function LibraryPage() {
       subtitle: 'Local playlist',
       imageUrl: selectedPlaylistTracks[0]?.imageUrl ?? null,
       trackCount: selectedPlaylistTracks.length,
+      tracks: selectedPlaylistTracks,
       routePath: `/library?view=playlist&id=${encodeURIComponent(selectedPlaylist.id)}`,
     })
     showToast({ title: 'Saved to Library', variant: 'success' })
@@ -2769,51 +2771,23 @@ export function LibraryPage() {
         )}
       </div>
     ) : null}
-    <AnimatePresence>
-      {isMobileSortSheetOpen ? (
-        <>
-          <motion.button
+    {isMobileSortSheetOpen ? (
+      <>
+          <button
             type="button"
-            className="fixed inset-0 z-[118] bg-black/62 lg:hidden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: shouldReduceMotion ? 0.01 : 0.14 }}
+            className="mobile-sheet-overlay-enter fixed inset-0 z-[118] bg-black/62 lg:hidden"
             onClick={() => setIsMobileSortSheetOpen(false)}
             aria-label="Close sort options"
           />
-          <motion.div
-            className="mobile-sheet-surface fixed inset-x-0 bottom-0 z-[119] rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(22,18,29,0.98),rgba(10,8,16,0.99))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-22px_58px_rgba(0,0,0,0.44)] lg:hidden"
-            initial={{ opacity: 0, y: 96 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 96 }}
-            transition={
-              shouldReduceMotion
-                ? { duration: 0.01, ease: 'linear' }
-                : { duration: 0.18, ease: 'easeOut' }
-            }
-            drag="y"
-            dragListener={false}
-            dragControls={mobileSortDragControls}
-            dragDirectionLock
-            dragElastic={0.08}
-            dragMomentum={false}
-            dragConstraints={{ top: 0, bottom: 0 }}
-            onDragEnd={(_, info) => {
-              if (info.offset.y > 90 || info.velocity.y > 620) {
-                setIsMobileSortSheetOpen(false)
-              }
-            }}
+          <div
+            className="mobile-sheet-enter mobile-sheet-surface fixed inset-x-0 bottom-0 z-[119] max-h-[88dvh] overflow-y-auto rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(22,18,29,0.99),rgba(10,8,16,1))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-16px_42px_rgba(0,0,0,0.38)] lg:hidden"
             onClick={(event) => event.stopPropagation()}
           >
             <button
               type="button"
-              className="mx-auto mb-3 block h-1.5 w-14 touch-none rounded-full bg-white/18"
-              onPointerDown={(event) => {
-                event.stopPropagation()
-                mobileSortDragControls.start(event)
-              }}
-              aria-label="Drag to close sort options"
+              className="mx-auto mb-3 block h-1.5 w-14 rounded-full bg-white/18"
+              onClick={() => setIsMobileSortSheetOpen(false)}
+              aria-label="Close sort options"
             />
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="font-heading text-[1.25rem] text-text-primary">Sort by</h2>
@@ -2842,55 +2816,26 @@ export function LibraryPage() {
                 </button>
               ))}
             </div>
-          </motion.div>
-        </>
-      ) : null}
-    </AnimatePresence>
-    <AnimatePresence>
-      {mobileItemMenuTarget ? (
-        <>
-          <motion.button
+          </div>
+      </>
+    ) : null}
+    {mobileItemMenuTarget ? (
+      <>
+          <button
             type="button"
-            className="fixed inset-0 z-[118] bg-black/62 lg:hidden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: shouldReduceMotion ? 0.01 : 0.14 }}
+            className="mobile-sheet-overlay-enter fixed inset-0 z-[118] bg-black/62 lg:hidden"
             onClick={() => setMobileItemMenuTarget(null)}
             aria-label="Close more options"
           />
-          <motion.div
-            className="mobile-sheet-surface fixed inset-x-0 bottom-0 z-[119] rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(22,18,29,0.98),rgba(10,8,16,0.99))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-22px_58px_rgba(0,0,0,0.44)] lg:hidden"
-            initial={{ opacity: 0, y: 96 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 96 }}
-            transition={
-              shouldReduceMotion
-                ? { duration: 0.01, ease: 'linear' }
-                : { duration: 0.18, ease: 'easeOut' }
-            }
-            drag="y"
-            dragListener={false}
-            dragControls={mobileItemMenuDragControls}
-            dragDirectionLock
-            dragElastic={0.08}
-            dragMomentum={false}
-            dragConstraints={{ top: 0, bottom: 0 }}
-            onDragEnd={(_, info) => {
-              if (info.offset.y > 90 || info.velocity.y > 620) {
-                setMobileItemMenuTarget(null)
-              }
-            }}
+          <div
+            className="mobile-sheet-enter mobile-sheet-surface fixed inset-x-0 bottom-0 z-[119] max-h-[88dvh] overflow-y-auto rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(22,18,29,0.99),rgba(10,8,16,1))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-16px_42px_rgba(0,0,0,0.38)] lg:hidden"
             onClick={(event) => event.stopPropagation()}
           >
             <button
               type="button"
-              className="mx-auto mb-3 block h-1.5 w-14 touch-none rounded-full bg-white/18"
-              onPointerDown={(event) => {
-                event.stopPropagation()
-                mobileItemMenuDragControls.start(event)
-              }}
-              aria-label="Drag to close more options"
+              className="mx-auto mb-3 block h-1.5 w-14 rounded-full bg-white/18"
+              onClick={() => setMobileItemMenuTarget(null)}
+              aria-label="Close more options"
             />
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="min-w-0">
@@ -3171,10 +3116,9 @@ export function LibraryPage() {
                 </>
               ) : null}
             </div>
-          </motion.div>
-        </>
-      ) : null}
-    </AnimatePresence>
+          </div>
+      </>
+    ) : null}
     <AddToPlaylistDialog
       open={isNewPlaylistDialogOpen}
       onOpenChange={setIsNewPlaylistDialogOpen}
@@ -3183,51 +3127,23 @@ export function LibraryPage() {
         setLibraryView('playlist')
       }}
     />
-    <AnimatePresence>
-      {detailMoreMenu ? (
-        <>
-          <motion.button
+    {detailMoreMenu ? (
+      <>
+          <button
             type="button"
-            className="fixed inset-0 z-[118] bg-black/62 lg:hidden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: shouldReduceMotion ? 0.01 : 0.14 }}
+            className="mobile-sheet-overlay-enter fixed inset-0 z-[118] bg-black/62 lg:hidden"
             onClick={() => setDetailMoreMenu(null)}
             aria-label="Close more options"
           />
-          <motion.div
-            className="fixed inset-x-0 bottom-0 z-[119] rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(22,18,29,0.98),rgba(10,8,16,0.99))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-22px_58px_rgba(0,0,0,0.44)] lg:hidden"
-            initial={{ opacity: 0, y: 96 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 96 }}
-            transition={
-              shouldReduceMotion
-                ? { duration: 0.01, ease: 'linear' }
-                : { duration: 0.18, ease: 'easeOut' }
-            }
-            drag="y"
-            dragListener={false}
-            dragControls={detailMoreDragControls}
-            dragDirectionLock
-            dragElastic={0.08}
-            dragMomentum={false}
-            dragConstraints={{ top: 0, bottom: 0 }}
-            onDragEnd={(_, info) => {
-              if (info.offset.y > 90 || info.velocity.y > 620) {
-                setDetailMoreMenu(null)
-              }
-            }}
+          <div
+            className="mobile-sheet-enter mobile-sheet-surface fixed inset-x-0 bottom-0 z-[119] max-h-[88dvh] overflow-y-auto rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(22,18,29,0.99),rgba(10,8,16,1))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-16px_42px_rgba(0,0,0,0.38)] lg:hidden"
             onClick={(event) => event.stopPropagation()}
           >
             <button
               type="button"
-              className="mx-auto mb-3 block h-1.5 w-14 touch-none rounded-full bg-white/18"
-              onPointerDown={(event) => {
-                event.stopPropagation()
-                detailMoreDragControls.start(event)
-              }}
-              aria-label="Drag to close more options"
+              className="mx-auto mb-3 block h-1.5 w-14 rounded-full bg-white/18"
+              onClick={() => setDetailMoreMenu(null)}
+              aria-label="Close more options"
             />
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="font-heading text-[1.25rem] text-text-primary">More options</h2>
@@ -3304,10 +3220,9 @@ export function LibraryPage() {
                 </button>
               ) : null}
             </div>
-          </motion.div>
-        </>
-      ) : null}
-    </AnimatePresence>
+          </div>
+      </>
+    ) : null}
     <Dialog.Root
       open={confirmDialogState !== null}
       onOpenChange={(open) => {

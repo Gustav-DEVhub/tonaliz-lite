@@ -1,4 +1,4 @@
-import type { SavedCollection, SavedCollectionType } from '@/entities/track/model/types'
+import type { SavedCollection, SavedCollectionType, Track } from '@/entities/track/model/types'
 import { tonalizDb } from '@/lib/db/app-db'
 
 export interface SaveCollectionInput {
@@ -8,6 +8,7 @@ export interface SaveCollectionInput {
   subtitle?: string | null
   imageUrl?: string | null
   trackCount?: number | null
+  tracks?: Track[] | null
   routePath?: string | null
   externalUrl?: string | null
 }
@@ -43,6 +44,7 @@ export async function saveCollection(input: SaveCollectionInput): Promise<SavedC
       subtitle: input.subtitle?.trim() || null,
       imageUrl: input.imageUrl ?? null,
       trackCount: input.trackCount ?? null,
+      tracks: input.tracks === undefined ? existing.tracks ?? null : input.tracks,
       routePath: input.routePath ?? null,
       externalUrl: input.externalUrl ?? null,
       updatedAt: timestamp,
@@ -60,6 +62,7 @@ export async function saveCollection(input: SaveCollectionInput): Promise<SavedC
     subtitle: input.subtitle?.trim() || null,
     imageUrl: input.imageUrl ?? null,
     trackCount: input.trackCount ?? null,
+    tracks: input.tracks ?? null,
     routePath: input.routePath ?? null,
     externalUrl: input.externalUrl ?? null,
     createdAt: timestamp,
@@ -68,6 +71,27 @@ export async function saveCollection(input: SaveCollectionInput): Promise<SavedC
 
   await tonalizDb.savedCollections.add(collection)
   return collection
+}
+
+export async function cacheSavedCollectionTracks(
+  type: SavedCollectionType,
+  sourceId: string,
+  tracks: Track[],
+): Promise<SavedCollection | null> {
+  const existing = await getSavedCollectionByIdentity(type, sourceId)
+
+  if (!existing || tracks.length === 0) {
+    return existing ?? null
+  }
+
+  const nextCollection: SavedCollection = {
+    ...existing,
+    trackCount: tracks.length,
+    tracks,
+  }
+
+  await tonalizDb.savedCollections.put(nextCollection)
+  return nextCollection
 }
 
 export async function removeSavedCollection(type: SavedCollectionType, sourceId: string): Promise<void> {

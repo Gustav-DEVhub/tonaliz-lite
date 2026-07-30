@@ -38,8 +38,12 @@ export function ShelfCollectionPage() {
   const sourceId = decodeCollectionId(collectionId)
   const parsedCollection = sourceId ? parseShelfCollectionSourceId(sourceId) : null
   const shelfConfig = parsedCollection ? getShelfConfigById(parsedCollection.shelfId) : null
-  const [tracks, setTracks] = useState<Track[]>([])
-  const [isLoading, setIsLoading] = useState(Boolean(shelfConfig))
+  const savedCollection = useSavedCollectionsStore((state) => state.collections.find((collection) => (
+    collection.type === 'shelf-collection' && collection.sourceId === sourceId
+  )))
+  const initialTracks = useMemo(() => savedCollection?.tracks ?? [], [savedCollection?.tracks])
+  const [tracks, setTracks] = useState<Track[]>(initialTracks)
+  const [isLoading, setIsLoading] = useState(Boolean(shelfConfig) && initialTracks.length === 0)
   const [error, setError] = useState<string | null>(null)
   const [isAddToPlaylistOpen, setIsAddToPlaylistOpen] = useState(false)
   const [isShareOpen, setIsShareOpen] = useState(false)
@@ -53,6 +57,7 @@ export function ShelfCollectionPage() {
   const playNextInQueue = usePlayerStore((state) => state.playNextInQueue)
   const addToQueue = usePlayerStore((state) => state.addToQueue)
   const saveCollection = useSavedCollectionsStore((state) => state.saveCollection)
+  const cacheCollectionTracks = useSavedCollectionsStore((state) => state.cacheCollectionTracks)
   const removeCollection = useSavedCollectionsStore((state) => state.removeCollection)
   const isSaved = useSavedCollectionsStore((state) => state.isSaved)
   const showToast = useToastStore((state) => state.showToast)
@@ -69,6 +74,11 @@ export function ShelfCollectionPage() {
     }
 
     let isCancelled = false
+    const savedTrackSnapshot = sourceId
+      ? useSavedCollectionsStore.getState().collections.find((collection) => (
+        collection.type === 'shelf-collection' && collection.sourceId === sourceId
+      ))?.tracks ?? []
+      : []
 
     void loadTrackShelves([shelfConfig])
       .then((shelves) => {
@@ -77,16 +87,28 @@ export function ShelfCollectionPage() {
         }
 
         const shelfTracks = shelves[0]?.tracks ?? []
-        setTracks(shelfTracks)
-        setError(shelfTracks.length === 0 ? 'No tracks are available for this collection right now.' : null)
+        setTracks(shelfTracks.length > 0 ? shelfTracks : savedTrackSnapshot)
+        setError(shelfTracks.length === 0 && savedTrackSnapshot.length === 0
+          ? 'No tracks are available for this collection right now.'
+          : null)
+
+        if (sourceId && shelfTracks.length > 0 && useSavedCollectionsStore.getState().isSaved('shelf-collection', sourceId)) {
+          void cacheCollectionTracks('shelf-collection', sourceId, shelfTracks).catch(() => {
+            // The fetched collection remains usable even if its local snapshot cannot be updated.
+          })
+        }
       })
       .catch((loadError) => {
         if (isCancelled) {
           return
         }
 
-        setTracks([])
-        setError(loadError instanceof Error ? loadError.message : 'Could not load this collection.')
+        setTracks(savedTrackSnapshot)
+        setError(savedTrackSnapshot.length > 0
+          ? null
+          : loadError instanceof Error
+            ? loadError.message
+            : 'Could not load this collection.')
       })
       .finally(() => {
         if (!isCancelled) {
@@ -97,7 +119,7 @@ export function ShelfCollectionPage() {
     return () => {
       isCancelled = true
     }
-  }, [shelfConfig])
+  }, [cacheCollectionTracks, shelfConfig, sourceId])
 
   const handlePlay = () => {
     if (!tracks[0]) {
@@ -147,6 +169,7 @@ export function ShelfCollectionPage() {
       subtitle: shelfConfig.description,
       imageUrl: tracks[0]?.imageUrl ?? null,
       trackCount: tracks.length,
+      tracks,
       routePath,
       externalUrl: null,
     })

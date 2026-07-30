@@ -1,5 +1,4 @@
 import * as Dialog from '@radix-ui/react-dialog'
-import { AnimatePresence, motion } from 'motion/react'
 import { Copy, ExternalLink, Link, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { copyTextToClipboard } from '@/shared/lib/share'
@@ -150,28 +149,24 @@ export function ShareLinkDialog({
         </Dialog.Portal>
       </Dialog.Root>
 
-      <AnimatePresence>
-        {open ? (
-          <>
-            <motion.button
+      {open ? (
+        <>
+            <button
               type="button"
-              className="fixed inset-0 z-[130] bg-black/68 lg:hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.16 }}
+              className="mobile-sheet-overlay-enter fixed inset-0 z-[130] bg-black/68 lg:hidden"
               onClick={() => handleOpenChange(false)}
               aria-label="Close share dialog"
             />
-            <motion.div
-              className="mobile-sheet-surface fixed inset-x-0 bottom-0 z-[131] rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(22,18,29,0.98),rgba(10,8,16,0.99))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-22px_58px_rgba(0,0,0,0.44)] lg:hidden"
-              initial={{ opacity: 0, y: 88 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 88 }}
-              transition={{ duration: 0.18, ease: 'easeOut' }}
+            <div
+              className="mobile-sheet-enter mobile-sheet-surface fixed inset-x-0 bottom-0 z-[131] max-h-[88dvh] overflow-y-auto rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(22,18,29,0.99),rgba(10,8,16,1))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-16px_42px_rgba(0,0,0,0.38)] lg:hidden"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="mx-auto mb-3 h-1.5 w-14 rounded-full bg-white/18" />
+              <button
+                type="button"
+                className="mx-auto mb-3 block h-1.5 w-14 rounded-full bg-white/18"
+                onClick={() => handleOpenChange(false)}
+                aria-label="Close share dialog"
+              />
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <h2 className="font-heading text-[1.25rem] text-text-primary">Share</h2>
@@ -212,10 +207,9 @@ export function ShareLinkDialog({
                   </a>
                 ) : null}
               </div>
-            </motion.div>
-          </>
-        ) : null}
-      </AnimatePresence>
+            </div>
+        </>
+      ) : null}
     </>
   )
 }

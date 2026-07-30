@@ -1,7 +1,6 @@
 import { Bookmark, BookmarkCheck, ExternalLink, Heart, ListPlus, PlayCircle, Share2, Trash2, UserRound } from 'lucide-react'
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { AnimatePresence, motion, useDragControls, useReducedMotion } from 'motion/react'
 import type { Track } from '@/entities/track/model/types'
 import { AddToPlaylistDialog } from '@/features/library/components/add-to-playlist-dialog'
 import { useSavedTracksStore } from '@/features/library/store/use-saved-tracks-store'
@@ -59,8 +58,6 @@ export function MobileTrackActionSheet({
   feedback,
 }: MobileTrackActionSheetProps) {
   const [isAddToPlaylistDialogOpen, setIsAddToPlaylistDialogOpen] = useState(false)
-  const dragControls = useDragControls()
-  const shouldReduceMotion = useReducedMotion()
   const showToast = useToastStore((state) => state.showToast)
   const isTrackSaved = useSavedTracksStore((state) => state.isTrackSaved(track.id))
   const saveTrack = useSavedTracksStore((state) => state.saveTrack)
@@ -69,9 +66,6 @@ export function MobileTrackActionSheet({
   const jamendoTrackUrl = getJamendoTrackUrl(trackUrl)
   const hasNativeShare = canUseNativeShare()
   const close = () => onOpenChange(false)
-  const transition = shouldReduceMotion
-    ? { duration: 0.01, ease: 'linear' as const }
-    : { duration: 0.18, ease: 'easeOut' as const }
 
   const showFeedback = (message: string, variant: ToastVariant = 'success') => {
     if (feedback) {
@@ -136,17 +130,11 @@ export function MobileTrackActionSheet({
   const actionClassName =
     'flex w-full items-center gap-3 rounded-[1.1rem] px-3 py-3 text-left text-[0.95rem] text-text-secondary transition-colors active:bg-white/8'
 
-  const sheet = (
-    <AnimatePresence>
-      {open ? (
-        <>
-          <motion.button
+  const sheet = open ? (
+    <>
+          <button
             type="button"
-            className="fixed inset-0 z-[118] bg-black/62 lg:hidden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: shouldReduceMotion ? 0.1 : 0.16 }}
+            className="mobile-sheet-overlay-enter fixed inset-0 z-[118] bg-black/62 lg:hidden"
             onClick={(event) => {
               event.stopPropagation()
               close()
@@ -154,34 +142,15 @@ export function MobileTrackActionSheet({
             aria-label="Close track actions"
           />
 
-          <motion.div
-            className="fixed inset-x-0 bottom-0 z-[119] rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(22,18,29,0.98),rgba(10,8,16,0.99))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-22px_58px_rgba(0,0,0,0.44)] will-change-transform lg:hidden"
-            initial={{ opacity: 0, y: 96 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 96 }}
-            transition={transition}
-            drag="y"
-            dragListener={false}
-            dragControls={dragControls}
-            dragDirectionLock
-            dragElastic={0.08}
-            dragMomentum={false}
-            dragConstraints={{ top: 0, bottom: 0 }}
-            onDragEnd={(_, info) => {
-              if (info.offset.y > 96 || info.velocity.y > 640) {
-                close()
-              }
-            }}
+          <div
+            className="mobile-sheet-enter mobile-sheet-surface fixed inset-x-0 bottom-0 z-[119] max-h-[88dvh] overflow-y-auto rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(22,18,29,0.99),rgba(10,8,16,1))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-16px_42px_rgba(0,0,0,0.38)] lg:hidden"
             onClick={(event) => event.stopPropagation()}
           >
             <button
               type="button"
-              className="mx-auto mb-3 block h-1.5 w-14 touch-none rounded-full bg-white/18"
-              onPointerDown={(event) => {
-                event.stopPropagation()
-                dragControls.start(event)
-              }}
-              aria-label="Drag to close track actions"
+              className="mx-auto mb-3 block h-1.5 w-14 rounded-full bg-white/18"
+              onClick={close}
+              aria-label="Close track actions"
             />
 
             <div className="mb-3 flex min-w-0 items-center gap-3">
@@ -329,11 +298,9 @@ export function MobileTrackActionSheet({
               ) : null}
 
             </div>
-          </motion.div>
-        </>
-      ) : null}
-    </AnimatePresence>
-  )
+          </div>
+    </>
+  ) : null
 
   return typeof document === 'undefined'
     ? null

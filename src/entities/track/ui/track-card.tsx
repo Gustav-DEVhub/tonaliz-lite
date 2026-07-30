@@ -73,7 +73,7 @@ export function TrackCard({
         onClick={onOpenArtist}
         onKeyDown={handleOpenArtistFromKeyboard}
         className={cn(
-          'track-card-surface group/track-actions hidden h-full cursor-pointer flex-col overflow-hidden rounded-[1.35rem] p-2.5 transition-[background-color,border-color,box-shadow,filter,transform] duration-200 hover:-translate-y-1 hover:brightness-[1.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/16 lg:flex',
+          'track-card-surface group/track-actions hidden h-full cursor-pointer flex-col overflow-hidden rounded-[1.35rem] p-2.5 transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/16 lg:flex',
           isCurrent && 'mood-glow ring-1 ring-white/10',
         )}
         aria-label={`Open ${track.artistName} artist playlist`}
@@ -84,7 +84,7 @@ export function TrackCard({
             alt={`${track.name} artwork`}
             loading="lazy"
             decoding="async"
-            className="aspect-square w-full object-cover transition-transform duration-300 group-hover/track-actions:scale-[1.025]"
+            className="aspect-square w-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/72 via-black/10 to-transparent" />
           <div

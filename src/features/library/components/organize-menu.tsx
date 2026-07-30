@@ -202,7 +202,7 @@ export function OrganizeMenu({ sortMode, viewMode, onSortChange, onViewChange }:
               ref={panelRef}
               style={panelStyle}
               className={cn(
-                'z-[90] origin-top-right rounded-[1rem] border border-white/10 bg-[#17121f]/95 p-2.5 shadow-[0_18px_42px_rgba(0,0,0,0.42)] backdrop-blur-xl transition-all duration-150 ease-out',
+                'z-[90] origin-top-right rounded-[1rem] border border-white/10 bg-[#17121f]/[0.98] p-2.5 shadow-[0_18px_42px_rgba(0,0,0,0.42)] transition-[opacity,transform] duration-150 ease-out',
                 isOpen ? 'pointer-events-auto translate-y-0 opacity-100 scale-100' : 'pointer-events-none -translate-y-1 opacity-0 scale-[0.98]',
               )}
               role="menu"
@@ -244,7 +244,7 @@ export function OrganizeMenu({ sortMode, viewMode, onSortChange, onViewChange }:
                           aria-label={option.label}
                           title={option.label}
                           className={cn(
-                            'relative inline-flex size-10 items-center justify-center rounded-[0.9rem] border text-text-secondary transition-all duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/45',
+                            'relative inline-flex size-10 items-center justify-center rounded-[0.9rem] border text-text-secondary transition-[background-color,border-color,color,box-shadow] duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/45',
                             viewMode === option.value
                               ? 'border-primary/30 bg-primary/16 text-text-primary shadow-[0_0_0_1px_rgba(255,255,255,0.03)]'
                               : 'border-transparent bg-white/[0.035] hover:border-white/10 hover:bg-white/7 hover:text-text-primary',
@@ -267,7 +267,7 @@ export function OrganizeMenu({ sortMode, viewMode, onSortChange, onViewChange }:
 
                         <div
                           className={cn(
-                            'pointer-events-none absolute bottom-[calc(100%+0.45rem)] left-1/2 -translate-x-1/2 rounded-md border border-white/10 bg-[rgba(11,9,16,0.92)] px-2 py-1 text-[0.62rem] font-medium text-white shadow-[0_12px_28px_rgba(0,0,0,0.36)] transition-all duration-150 ease-out whitespace-nowrap',
+                            'pointer-events-none absolute bottom-[calc(100%+0.45rem)] left-1/2 -translate-x-1/2 rounded-md border border-white/10 bg-[rgba(11,9,16,0.98)] px-2 py-1 text-[0.62rem] font-medium text-white shadow-[0_12px_28px_rgba(0,0,0,0.36)] transition-[opacity,transform] duration-150 ease-out whitespace-nowrap',
                             tooltipLayout === option.value ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0',
                           )}
                         >

@@ -4,7 +4,7 @@ function isMobileViewport() {
   return typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches
 }
 
-export function useMobileLongPress(onLongPress: () => void, disabled = false, delay = 360) {
+export function useMobileLongPress(onLongPress: () => void, disabled = false, delay = 320) {
   const timeoutRef = useRef<number | null>(null)
   const startPointRef = useRef<{ x: number; y: number } | null>(null)
   const didLongPressRef = useRef(false)

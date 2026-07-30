@@ -78,6 +78,7 @@ export interface SavedCollection {
   subtitle: string | null
   imageUrl: string | null
   trackCount: number | null
+  tracks?: Track[] | null
   routePath: string | null
   externalUrl: string | null
   createdAt: string

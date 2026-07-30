@@ -1,6 +1,5 @@
 import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react'
 import { useEffect, type ComponentType } from 'react'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useToastStore, type ToastItem, type ToastVariant } from '@/shared/store/use-toast-store'
 import { cn } from '@/shared/lib/utils'
 
@@ -25,7 +24,6 @@ const variantStyles: Record<ToastVariant, { icon: ComponentType<{ className?: st
 
 function ToastCard({ toast }: { toast: ToastItem }) {
   const dismissToast = useToastStore((state) => state.dismissToast)
-  const shouldReduceMotion = useReducedMotion()
   const variant = variantStyles[toast.variant]
   const Icon = variant.icon
 
@@ -39,13 +37,8 @@ function ToastCard({ toast }: { toast: ToastItem }) {
   }, [dismissToast, toast.duration, toast.id])
 
   return (
-    <motion.div
-      layout
-      initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.98 }}
-      transition={shouldReduceMotion ? { duration: 0.12 } : { type: 'spring', stiffness: 430, damping: 34, mass: 0.7 }}
-      className="pointer-events-auto overflow-hidden rounded-[1.15rem] border border-white/10 bg-[rgba(17,14,24,0.94)] p-3 text-text-primary shadow-[0_18px_48px_rgba(0,0,0,0.38)] backdrop-blur-xl"
+    <div
+      className="toast-enter pointer-events-auto overflow-hidden rounded-[1.15rem] border border-white/10 bg-[rgba(17,14,24,0.98)] p-3 text-text-primary shadow-[0_14px_38px_rgba(0,0,0,0.34)]"
       role="status"
       aria-live="polite"
     >
@@ -83,7 +76,7 @@ function ToastCard({ toast }: { toast: ToastItem }) {
           <X className="size-3.5" />
         </button>
       </div>
-    </motion.div>
+    </div>
   )
 }
 
@@ -92,11 +85,9 @@ export function ToastViewport() {
 
   return (
     <div className="pointer-events-none fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+7.25rem)] z-[260] flex flex-col-reverse gap-2 md:inset-x-auto md:bottom-auto md:right-5 md:top-20 md:w-[min(24rem,calc(100vw-2rem))] md:flex-col">
-      <AnimatePresence initial={false}>
-        {toasts.map((toast) => (
-          <ToastCard key={toast.id} toast={toast} />
-        ))}
-      </AnimatePresence>
+      {toasts.map((toast) => (
+        <ToastCard key={toast.id} toast={toast} />
+      ))}
     </div>
   )
 }

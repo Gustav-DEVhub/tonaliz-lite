@@ -1,6 +1,5 @@
 import { Heart, ListMusic, Pause, Play, Repeat, Shuffle, StepBack, StepForward } from 'lucide-react'
-import { Suspense, lazy, useRef, useState } from 'react'
-import { motion } from 'motion/react'
+import { Suspense, lazy, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { DesktopVolumeControl } from '@/features/player/components/desktop-volume-control'
 import { MarqueeText } from '@/features/player/components/marquee-text'
 import { useFavoritesStore } from '@/features/library/store/use-favorites-store'
@@ -19,6 +18,12 @@ const MobileExpandedPlayer = lazy(async () =>
 export function BottomPlayer() {
   const [isMobileExpandedOpen, setIsMobileExpandedOpen] = useState(false)
   const didMiniPlayerSwipeRef = useRef(false)
+  const miniPlayerPointerRef = useRef<{
+    pointerId: number
+    x: number
+    y: number
+    startedAt: number
+  } | null>(null)
   const currentTrack = usePlayerStore((state) => state.currentTrack)
   const currentTrackId = currentTrack?.id ?? null
   const isPlaying = usePlayerStore((state) => state.isPlaying)
@@ -109,41 +114,66 @@ export function BottomPlayer() {
     }
   }
 
+  const handleMiniPlayerPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === 'mouse') {
+      return
+    }
+
+    miniPlayerPointerRef.current = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      startedAt: performance.now(),
+    }
+  }
+
+  const handleMiniPlayerPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const pointerStart = miniPlayerPointerRef.current
+    miniPlayerPointerRef.current = null
+
+    if (!pointerStart || pointerStart.pointerId !== event.pointerId) {
+      return
+    }
+
+    const elapsed = Math.max(performance.now() - pointerStart.startedAt, 1)
+    const offsetX = event.clientX - pointerStart.x
+    const offsetY = event.clientY - pointerStart.y
+    handleMiniPlayerSwipe(offsetX, offsetY, (offsetX / elapsed) * 1000)
+  }
+
   return (
     <>
-      <Suspense fallback={null}>
-        <MobileExpandedPlayer
-          open={isMobileExpandedOpen && Boolean(currentTrack)}
-          onClose={() => setIsMobileExpandedOpen(false)}
-          currentTrack={currentTrack}
-          isPlaying={isPlaying}
-          currentTime={currentTime}
-          duration={resolvedDuration}
-          currentMood={currentMood}
-          queue={queue}
-          queueIndex={queueIndex}
-          hasNextTrack={hasNextTrack}
-          hasPreviousTrack={hasPreviousTrack}
-          isShuffleEnabled={isShuffleEnabled}
-          repeatMode={repeatMode}
-          isFavorite={isCurrentFavorite}
-          onTogglePlay={togglePlay}
-          onNext={nextTrack}
-          onPrevious={previousTrack}
-          onPlayQueuedTrack={playTrackInCurrentQueue}
-          onReorderUpcomingTracks={reorderUpcomingQueue}
-          onToggleShuffle={toggleShuffle}
-          onCycleRepeatMode={cycleRepeatMode}
-          onToggleFavorite={() => {
-            if (!currentTrack) {
-              return
-            }
-
-            void toggleFavorite(currentTrack)
-          }}
-          onSeek={handleSeek}
-        />
-      </Suspense>
+      {isMobileExpandedOpen && currentTrack ? (
+        <Suspense fallback={null}>
+          <MobileExpandedPlayer
+            open
+            onClose={() => setIsMobileExpandedOpen(false)}
+            currentTrack={currentTrack}
+            isPlaying={isPlaying}
+            currentTime={currentTime}
+            duration={resolvedDuration}
+            currentMood={currentMood}
+            queue={queue}
+            queueIndex={queueIndex}
+            hasNextTrack={hasNextTrack}
+            hasPreviousTrack={hasPreviousTrack}
+            isShuffleEnabled={isShuffleEnabled}
+            repeatMode={repeatMode}
+            isFavorite={isCurrentFavorite}
+            onTogglePlay={togglePlay}
+            onNext={nextTrack}
+            onPrevious={previousTrack}
+            onPlayQueuedTrack={playTrackInCurrentQueue}
+            onReorderUpcomingTracks={reorderUpcomingQueue}
+            onToggleShuffle={toggleShuffle}
+            onCycleRepeatMode={cycleRepeatMode}
+            onToggleFavorite={() => {
+              void toggleFavorite(currentTrack)
+            }}
+            onSeek={handleSeek}
+          />
+        </Suspense>
+      ) : null}
 
       <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 px-2.5 md:bottom-0 md:px-4 lg:px-0">
       <div className="editorial-panel mood-glow relative w-full overflow-hidden rounded-[1.1rem] border-white/8 px-3 py-2 sm:rounded-[1.35rem] sm:px-4 sm:py-4">
@@ -187,22 +217,18 @@ export function BottomPlayer() {
               }}
               aria-label={`Open expanded player for ${currentTrack.name}`}
             >
-                <motion.div
+                <div
                   className="flex min-w-0 flex-1 items-center gap-3 touch-pan-y"
-                  drag="x"
-                  dragDirectionLock
-                  dragElastic={0.16}
-                  dragMomentum={false}
-                  dragConstraints={{ left: 0, right: 0 }}
-                  whileTap={{ scale: 0.992 }}
+                  onPointerDown={handleMiniPlayerPointerDown}
+                  onPointerUp={handleMiniPlayerPointerUp}
+                  onPointerCancel={() => {
+                    miniPlayerPointerRef.current = null
+                  }}
                   onClickCapture={(event) => {
                     if (didMiniPlayerSwipeRef.current) {
                       event.stopPropagation()
                       didMiniPlayerSwipeRef.current = false
                     }
-                  }}
-                  onDragEnd={(_, info) => {
-                    handleMiniPlayerSwipe(info.offset.x, info.offset.y, info.velocity.x)
                   }}
                   aria-label="Swipe mini player artwork or title left or right to change track"
                 >
@@ -220,7 +246,7 @@ export function BottomPlayer() {
                       <MarqueeText text={currentTrack.artistName} duration={12} />
                     </p>
                   </div>
-                </motion.div>
+                </div>
                 <Button
                   type="button"
                   size="icon"

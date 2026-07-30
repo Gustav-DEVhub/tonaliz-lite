@@ -56,6 +56,7 @@ export function ArtistProfilePage() {
   const showToast = useToastStore((state) => state.showToast)
   const savedCollections = useSavedCollectionsStore((state) => state.collections)
   const saveSavedCollection = useSavedCollectionsStore((state) => state.saveCollection)
+  const cacheCollectionTracks = useSavedCollectionsStore((state) => state.cacheCollectionTracks)
   const removeSavedCollection = useSavedCollectionsStore((state) => state.removeCollection)
   const { columns: desktopColumns, setColumn: setDesktopColumn } = useDesktopTrackColumns()
 
@@ -92,7 +93,17 @@ export function ArtistProfilePage() {
         return
       }
 
-      setIsLoading(true)
+      const artistSourceId = artistId ?? requestedArtistName.toLowerCase()
+      const savedTrackSnapshot = useSavedCollectionsStore.getState().collections.find((collection) => (
+        collection.tracks?.length
+        && (
+          (collection.type === 'artist' && collection.sourceId === artistSourceId)
+          || (collection.type === 'collection' && collection.sourceId === `artist-tracks:${artistSourceId}`)
+        )
+      ))?.tracks ?? []
+
+      setTracks(savedTrackSnapshot)
+      setIsLoading(savedTrackSnapshot.length === 0)
       setError(null)
 
       try {
@@ -114,15 +125,34 @@ export function ArtistProfilePage() {
           return
         }
 
-        setTracks(artistTracks)
+        setTracks(artistTracks.length > 0 ? artistTracks : savedTrackSnapshot)
         setArtistProfile(profile)
+
+        if (artistTracks.length > 0) {
+          const savedArtistCollections = useSavedCollectionsStore.getState().collections.filter((collection) => (
+            (collection.type === 'artist' && collection.sourceId === artistSourceId)
+            || (collection.type === 'collection' && collection.sourceId === `artist-tracks:${artistSourceId}`)
+          ))
+
+          await Promise.all(savedArtistCollections.map(async (collection) => {
+            try {
+              await cacheCollectionTracks(collection.type, collection.sourceId, artistTracks)
+            } catch {
+              // Keep the live artist session available even if the snapshot cannot be persisted.
+            }
+          }))
+        }
       } catch (fetchError) {
         if (!isActive) {
           return
         }
 
-        setError(fetchError instanceof Error ? fetchError.message : 'Artist tracks are unavailable right now.')
-        setTracks([])
+        setError(savedTrackSnapshot.length > 0
+          ? null
+          : fetchError instanceof Error
+            ? fetchError.message
+            : 'Artist tracks are unavailable right now.')
+        setTracks(savedTrackSnapshot)
       } finally {
         if (isActive) {
           setIsLoading(false)
@@ -133,7 +163,7 @@ export function ArtistProfilePage() {
     return () => {
       isActive = false
     }
-  }, [artistId, isMissingArtistReference, requestedArtistName, routeState?.sourceTrack])
+  }, [artistId, cacheCollectionTracks, isMissingArtistReference, requestedArtistName, routeState?.sourceTrack])
 
   const resolvedArtistName = artistProfile?.name || tracks[0]?.artistName || requestedArtistName || 'Artist'
   const artistPlaylist = useMemo(
@@ -141,7 +171,7 @@ export function ArtistProfilePage() {
     [resolvedArtistName, tracks],
   )
   const isCurrentArtistSession = queue?.id === artistPlaylist.id
-  const isLoadingArtistPage = !isMissingArtistReference && isLoading
+  const isLoadingArtistPage = !isMissingArtistReference && isLoading && tracks.length === 0
   const hasTracks = tracks.length > 0
   const artistSourceId = artistId ?? (requestedArtistName ? requestedArtistName.toLowerCase() : resolvedArtistName.toLowerCase())
   const artistTracksCollectionSourceId = `artist-tracks:${artistSourceId}`
@@ -230,6 +260,7 @@ export function ArtistProfilePage() {
       subtitle: 'Saved artist',
       imageUrl: artistProfile?.imageUrl ?? routeState?.sourceTrack.artistImageUrl ?? tracks[0]?.imageUrl ?? null,
       trackCount: tracks.length,
+      tracks,
       routePath: artistRoutePath,
       externalUrl: artistJamendoUrl,
     })
@@ -256,6 +287,7 @@ export function ArtistProfilePage() {
       subtitle: 'Artist tracks',
       imageUrl: artistProfile?.imageUrl ?? routeState?.sourceTrack.artistImageUrl ?? tracks[0]?.imageUrl ?? null,
       trackCount: tracks.length,
+      tracks,
       routePath: artistRoutePath,
       externalUrl: artistJamendoUrl,
     })
@@ -379,7 +411,7 @@ export function ArtistProfilePage() {
               <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[0.84rem] text-text-secondary sm:text-sm lg:justify-start">
                 <span>{tracks.length} {tracks.length === 1 ? 'track' : 'tracks'}</span>
                 <span>Artist session</span>
-                {isLoadingArtistPage ? <span>Refreshing from Jamendo...</span> : null}
+                {isLoadingArtistPage ? <span>Loading artist tracks...</span> : null}
               </div>
 
               <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5 lg:justify-start">

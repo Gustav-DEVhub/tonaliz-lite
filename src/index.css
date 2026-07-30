@@ -102,6 +102,10 @@ input {
 }
 
 @media (min-width: 1024px) {
+  .editorial-panel {
+    backdrop-filter: none;
+  }
+
   .editorial-panel-flat-desktop {
     background: none;
     background-color: transparent;
@@ -134,6 +138,63 @@ input {
 .mobile-sheet-surface {
   contain: layout paint;
   backface-visibility: hidden;
+}
+
+@keyframes tonaliz-mobile-sheet-enter {
+  from {
+    opacity: 0.94;
+    transform: translate3d(0, 1.15rem, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes tonaliz-overlay-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes tonaliz-toast-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0.65rem, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.mobile-sheet-enter {
+  animation: tonaliz-mobile-sheet-enter 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mobile-sheet-overlay-enter {
+  animation: tonaliz-overlay-enter 110ms ease-out;
+}
+
+.toast-enter {
+  animation: tonaliz-toast-enter 140ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.marquee-track {
+  animation: tonaliz-marquee var(--marquee-duration) linear infinite;
+  will-change: transform;
+}
+
+@keyframes tonaliz-marquee {
+  to {
+    transform: translate3d(var(--marquee-distance), 0, 0);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

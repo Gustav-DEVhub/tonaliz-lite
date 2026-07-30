@@ -82,6 +82,7 @@ export function ShelfCollectionActionMenu({
       subtitle: description,
       imageUrl: coverTrack?.imageUrl ?? null,
       trackCount: tracks.length,
+      tracks,
       routePath,
       externalUrl: null,
     })

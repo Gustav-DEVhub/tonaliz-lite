@@ -1,5 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { Bookmark, Heart, Home, Library, ListMusic, Music2, PanelRightOpen, Play, Plus, Radio, Search, Wifi, WifiOff } from 'lucide-react'
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { createPlaylist } from '@/entities/track/lib/create-playlist'
@@ -21,29 +20,29 @@ import { ToastViewport } from '@/shared/ui/toast-viewport'
 
 const loadHomePage = () => import('@/features/home/pages/home-page').then((module) => ({ default: module.HomePage }))
 const HomePage = lazy(loadHomePage)
-const DiscoverPage = lazy(async () =>
-  import('@/features/discover/pages/discover-page').then((module) => ({ default: module.DiscoverPage })),
-)
+const loadDiscoverPage = () =>
+  import('@/features/discover/pages/discover-page').then((module) => ({ default: module.DiscoverPage }))
+const DiscoverPage = lazy(loadDiscoverPage)
 const SearchPage = lazy(async () =>
   import('@/features/discover/pages/search-page').then((module) => ({ default: module.SearchPage })),
 )
-const ShelfCollectionPage = lazy(async () =>
-  import('@/features/discover/pages/shelf-collection-page').then((module) => ({ default: module.ShelfCollectionPage })),
-)
-const ArtistProfilePage = lazy(async () =>
-  import('@/features/artist/pages/artist-profile-page').then((module) => ({ default: module.ArtistProfilePage })),
-)
+const loadShelfCollectionPage = () =>
+  import('@/features/discover/pages/shelf-collection-page').then((module) => ({ default: module.ShelfCollectionPage }))
+const ShelfCollectionPage = lazy(loadShelfCollectionPage)
+const loadArtistProfilePage = () =>
+  import('@/features/artist/pages/artist-profile-page').then((module) => ({ default: module.ArtistProfilePage }))
+const ArtistProfilePage = lazy(loadArtistProfilePage)
 const loadLibraryPage = () => import('@/features/library/pages/library-page').then((module) => ({ default: module.LibraryPage }))
 const LibraryPage = lazy(loadLibraryPage)
 const ExpandedPlayerPage = lazy(async () =>
   import('@/features/player/pages/expanded-player-page').then((module) => ({ default: module.ExpandedPlayerPage })),
 )
-const QueuePanel = lazy(async () =>
-  import('@/features/player/components/queue-panel').then((module) => ({ default: module.QueuePanel })),
-)
-const NowPlayingPanel = lazy(async () =>
-  import('@/features/player/components/now-playing-panel').then((module) => ({ default: module.NowPlayingPanel })),
-)
+const loadQueuePanel = () =>
+  import('@/features/player/components/queue-panel').then((module) => ({ default: module.QueuePanel }))
+const QueuePanel = lazy(loadQueuePanel)
+const loadNowPlayingPanel = () =>
+  import('@/features/player/components/now-playing-panel').then((module) => ({ default: module.NowPlayingPanel }))
+const NowPlayingPanel = lazy(loadNowPlayingPanel)
 
 const desktopNavigationItems = [
   { to: '/', label: 'Home', icon: Home, end: true },
@@ -64,9 +63,15 @@ const RIGHT_PANEL_DEFAULT_WIDTH = 360
 const RIGHT_PANEL_COMPACT_WIDTH = 72
 const RIGHT_PANEL_MIN_DRAG_WIDTH = 300
 const RIGHT_PANEL_MAX_DRAG_WIDTH = 480
-const RIGHT_PANEL_COMPACT_THRESHOLD = 220
 
 type SidebarMode = 'expanded' | 'compact'
+type RightPanelDragState = {
+  pointerId: number
+  startX: number
+  startWidth: number
+  pendingWidth: number
+  frameId: number | null
+}
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
@@ -118,27 +123,24 @@ interface DesktopLibrarySidebarModuleProps {
 
 function SidebarHamburgerIcon() {
   return (
-    <motion.svg
+    <svg
       viewBox="0 0 24 24"
       className="size-[1.05rem]"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.8"
       strokeLinecap="round"
-      initial={{ opacity: 0.88, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.18 }}
     >
       <path d="M4.5 7.5h15" />
       <path d="M4.5 12h15" />
       <path d="M4.5 16.5h15" />
-    </motion.svg>
+    </svg>
   )
 }
 
 function SidebarArrowIcon({ direction }: { direction: 'left' | 'right' }) {
   return (
-    <motion.svg
+    <svg
       viewBox="0 0 24 24"
       className="size-[1.05rem]"
       fill="none"
@@ -146,13 +148,9 @@ function SidebarArrowIcon({ direction }: { direction: 'left' | 'right' }) {
       strokeWidth="1.9"
       strokeLinecap="round"
       strokeLinejoin="round"
-      initial={{ opacity: 0, scale: 0.86 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.86 }}
-      transition={{ duration: 0.18 }}
     >
       {direction === 'left' ? <path d="M14.5 6.5 8.5 12l6 5.5" /> : <path d="m9.5 6.5 6 5.5-6 5.5" />}
-    </motion.svg>
+    </svg>
   )
 }
 
@@ -354,7 +352,8 @@ export function AppShell() {
   const location = useLocation()
   const routeScrollKey = `${location.pathname}${location.search}`
   const contentScrollRef = useRef<HTMLDivElement | null>(null)
-  const rightPanelDragStateRef = useRef<{ pointerId: number; startX: number; startWidth: number } | null>(null)
+  const desktopGridRef = useRef<HTMLDivElement | null>(null)
+  const rightPanelDragStateRef = useRef<RightPanelDragState | null>(null)
   const [isRightPanelDragging, setIsRightPanelDragging] = useState(false)
   const [leftSidebarMode, setLeftSidebarMode] = useState<SidebarMode>(() => readStoredSidebarMode('leftSidebarMode', 'expanded'))
   const [rightPanelMode, setRightPanelMode] = useState<SidebarMode>(() => readStoredSidebarMode('rightPanelMode', 'expanded'))
@@ -374,8 +373,6 @@ export function AppShell() {
   const isOnline = usePlayerStore((state) => state.isOnline)
   const desktopRightRailMode = usePlayerStore((state) => state.desktopRightRailMode)
   const openNowPlayingRail = usePlayerStore((state) => state.openNowPlayingRail)
-  const closeDesktopRail = usePlayerStore((state) => state.closeDesktopRail)
-  const closeQueueRailAndRestore = usePlayerStore((state) => state.closeQueueRailAndRestore)
   const query = useDiscoverStore((state) => state.query)
   const setQuery = useDiscoverStore((state) => state.setQuery)
   const search = useDiscoverStore((state) => state.search)
@@ -393,7 +390,15 @@ export function AppShell() {
 
     const prefetch = () => {
       void loadHomePage()
+      void loadDiscoverPage()
       void loadLibraryPage()
+
+      if (window.matchMedia('(min-width: 1024px)').matches) {
+        void loadArtistProfilePage()
+        void loadShelfCollectionPage()
+        void loadNowPlayingPanel()
+        void loadQueuePanel()
+      }
     }
 
     if (idleWindow.requestIdleCallback) {
@@ -439,6 +444,22 @@ export function AppShell() {
     setRightPanelMode('expanded')
     setRightPanelWidth(rightPanelLastExpandedWidth)
     openNowPlayingRail()
+  }
+
+  const startRightPanelResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+
+    const startWidth = isRightPanelCompact ? rightPanelLastExpandedWidth : effectiveRightPanelWidth
+    rightPanelDragStateRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startWidth,
+      pendingWidth: startWidth,
+      frameId: null,
+    }
+    setIsRightPanelDragging(true)
+    document.body.style.cursor = 'ew-resize'
+    document.body.style.userSelect = 'none'
   }
 
   useEffect(() => {
@@ -520,19 +541,23 @@ export function AppShell() {
         RIGHT_PANEL_MAX_DRAG_WIDTH,
       )
 
-      if (nextWidth <= RIGHT_PANEL_COMPACT_THRESHOLD) {
-        if (desktopRightRailMode === 'queue') {
-          closeQueueRailAndRestore()
-        } else {
-          closeDesktopRail()
-        }
-        setRightPanelMode('compact')
+      dragState.pendingWidth = nextWidth
+      if (dragState.frameId !== null) {
         return
       }
 
-      setRightPanelMode('expanded')
-      setRightPanelWidth(nextWidth)
-      setRightPanelLastExpandedWidth(nextWidth)
+      dragState.frameId = window.requestAnimationFrame(() => {
+        const activeDragState = rightPanelDragStateRef.current
+        if (!activeDragState || !desktopGridRef.current || !showDesktopRailHost) {
+          return
+        }
+
+        activeDragState.frameId = null
+        desktopGridRef.current.style.setProperty(
+          '--desktop-grid-template',
+          `${effectiveLeftSidebarWidth}px minmax(0, 1fr) ${activeDragState.pendingWidth}px`,
+        )
+      })
     }
 
     const finishDrag = (event: PointerEvent) => {
@@ -541,7 +566,15 @@ export function AppShell() {
         return
       }
 
+      if (dragState.frameId !== null) {
+        window.cancelAnimationFrame(dragState.frameId)
+      }
+
+      const finalWidth = dragState.pendingWidth
       rightPanelDragStateRef.current = null
+      setRightPanelMode('expanded')
+      setRightPanelWidth(finalWidth)
+      setRightPanelLastExpandedWidth(finalWidth)
       setIsRightPanelDragging(false)
       document.body.style.removeProperty('cursor')
       document.body.style.removeProperty('user-select')
@@ -556,13 +589,13 @@ export function AppShell() {
       window.removeEventListener('pointerup', finishDrag)
       window.removeEventListener('pointercancel', finishDrag)
     }
-  }, [closeDesktopRail, closeQueueRailAndRestore, desktopRightRailMode, isRightPanelDragging])
+  }, [effectiveLeftSidebarWidth, isRightPanelDragging, showDesktopRailHost])
 
   return (
     <div style={moodStyle} className="relative min-h-screen overflow-x-hidden lg:h-screen lg:overflow-hidden">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--mood-accent)_14%,transparent),transparent_34%)]" />
 
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/6 bg-app-bg/96 lg:bg-app-bg/88 lg:backdrop-blur-xl">
+      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/6 bg-app-bg/96">
         <div className="px-3.5 py-3 sm:px-5 sm:py-3.5 lg:hidden lg:px-8">
           <div className="flex w-full items-center justify-between gap-4">
             <button
@@ -697,6 +730,7 @@ export function AppShell() {
         )}
       >
         <div
+          ref={desktopGridRef}
           className={cn(
             'lg:grid lg:h-full lg:min-h-0 lg:grid-cols-[var(--desktop-grid-template)] lg:gap-6 transition-[grid-template-columns] duration-[180ms] ease-out xl:gap-8',
             isRightPanelDragging ? 'lg:transition-none' : '',
@@ -708,11 +742,7 @@ export function AppShell() {
             style={{ width: effectiveLeftSidebarWidth }}
           >
             <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 z-10 w-px bg-[#333333]" />
-            <motion.div
-              animate={{ width: effectiveLeftSidebarWidth }}
-              transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
-              className="flex h-full min-h-0 flex-col gap-5 overflow-hidden pr-1"
-            >
+            <div className="flex h-full min-h-0 flex-col gap-5 overflow-hidden pr-1">
               <div className="shrink-0 space-y-4 border-b border-white/8 pb-5">
                 <div className={cn('px-1', isLeftSidebarCollapsed ? 'flex justify-center' : '')}>
                   <button
@@ -722,13 +752,7 @@ export function AppShell() {
                     className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-text-secondary transition-colors hover:text-text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/45"
                     onClick={toggleLeftSidebarMode}
                   >
-                    <AnimatePresence mode="wait" initial={false}>
-                      {sidebarIconCue ? (
-                        <SidebarArrowIcon key={sidebarIconCue} direction={sidebarIconCue} />
-                      ) : (
-                        <SidebarHamburgerIcon key="hamburger" />
-                      )}
-                    </AnimatePresence>
+                    {sidebarIconCue ? <SidebarArrowIcon direction={sidebarIconCue} /> : <SidebarHamburgerIcon />}
                   </button>
                 </div>
 
@@ -776,7 +800,7 @@ export function AppShell() {
               </div>
 
               <DesktopLibrarySidebarModule isCollapsed={isLeftSidebarCollapsed} />
-            </motion.div>
+            </div>
           </aside>
 
           <div
@@ -801,7 +825,7 @@ export function AppShell() {
           {showDesktopRailHost ? (
             <Suspense fallback={<RailFallback />}>
               {isRightPanelCompact ? (
-                <div className="relative hidden lg:-mt-8 lg:block lg:h-[calc(100%+2rem)] lg:min-h-0" style={{ width: effectiveRightPanelWidth }}>
+                <div className="relative hidden w-full lg:-mt-8 lg:block lg:h-[calc(100%+2rem)] lg:min-h-0">
                   <CompactRightRail
                     currentTrack={currentTrack}
                     onOpenNowPlaying={expandRightPanel}
@@ -814,22 +838,13 @@ export function AppShell() {
                       'absolute inset-y-0 left-[-6px] z-20 hidden w-3 cursor-ew-resize lg:block',
                       isRightPanelDragging && 'cursor-grabbing',
                     )}
-                    onPointerDown={(event) => {
-                      rightPanelDragStateRef.current = {
-                        pointerId: event.pointerId,
-                        startX: event.clientX,
-                        startWidth: effectiveRightPanelWidth,
-                      }
-                      setIsRightPanelDragging(true)
-                      document.body.style.cursor = 'ew-resize'
-                      document.body.style.userSelect = 'none'
-                    }}
+                    onPointerDown={startRightPanelResize}
                   >
                     <span className="absolute inset-y-3 left-1/2 w-px -translate-x-1/2 rounded-full bg-white/0 transition-colors hover:bg-white/18" />
                   </button>
                 </div>
               ) : desktopRightRailMode === 'queue' ? (
-                <div className="relative hidden lg:-mt-8 lg:block lg:h-[calc(100%+2rem)] lg:min-h-0" style={{ width: effectiveRightPanelWidth }}>
+                <div className="relative hidden w-full lg:-mt-8 lg:block lg:h-[calc(100%+2rem)] lg:min-h-0">
                   <QueuePanel />
                   <button
                     type="button"
@@ -839,22 +854,13 @@ export function AppShell() {
                       'absolute inset-y-0 left-[-6px] z-20 hidden w-3 cursor-ew-resize lg:block',
                       isRightPanelDragging && 'cursor-grabbing',
                     )}
-                    onPointerDown={(event) => {
-                      rightPanelDragStateRef.current = {
-                        pointerId: event.pointerId,
-                        startX: event.clientX,
-                        startWidth: effectiveRightPanelWidth,
-                      }
-                      setIsRightPanelDragging(true)
-                      document.body.style.cursor = 'ew-resize'
-                      document.body.style.userSelect = 'none'
-                    }}
+                    onPointerDown={startRightPanelResize}
                   >
                     <span className="absolute inset-y-3 left-1/2 w-px -translate-x-1/2 rounded-full bg-white/0 transition-colors hover:bg-white/18" />
                   </button>
                 </div>
               ) : desktopRightRailMode === 'now_playing' ? (
-                <div className="relative hidden lg:-mt-8 lg:block lg:h-[calc(100%+2rem)] lg:min-h-0" style={{ width: effectiveRightPanelWidth }}>
+                <div className="relative hidden w-full lg:-mt-8 lg:block lg:h-[calc(100%+2rem)] lg:min-h-0">
                   <NowPlayingPanel />
                   <button
                     type="button"
@@ -864,22 +870,13 @@ export function AppShell() {
                       'absolute inset-y-0 left-[-6px] z-20 hidden w-3 cursor-ew-resize lg:block',
                       isRightPanelDragging && 'cursor-grabbing',
                     )}
-                    onPointerDown={(event) => {
-                      rightPanelDragStateRef.current = {
-                        pointerId: event.pointerId,
-                        startX: event.clientX,
-                        startWidth: effectiveRightPanelWidth,
-                      }
-                      setIsRightPanelDragging(true)
-                      document.body.style.cursor = 'ew-resize'
-                      document.body.style.userSelect = 'none'
-                    }}
+                    onPointerDown={startRightPanelResize}
                   >
                     <span className="absolute inset-y-3 left-1/2 w-px -translate-x-1/2 rounded-full bg-white/0 transition-colors hover:bg-white/18" />
                   </button>
                 </div>
               ) : (
-                <div className="relative hidden lg:-mt-8 lg:block lg:h-[calc(100%+2rem)] lg:min-h-0" style={{ width: effectiveRightPanelWidth }}>
+                <div className="relative hidden w-full lg:-mt-8 lg:block lg:h-[calc(100%+2rem)] lg:min-h-0">
                   <CompactRightRail
                     currentTrack={currentTrack}
                     onOpenNowPlaying={expandRightPanel}
