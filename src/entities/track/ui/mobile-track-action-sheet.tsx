@@ -7,6 +7,7 @@ import { useSavedTracksStore } from '@/features/library/store/use-saved-tracks-s
 import { canUseNativeShare, copyTextToClipboard, shareWithNativeSheet } from '@/shared/lib/share'
 import { cn } from '@/shared/lib/utils'
 import { useToastStore, type ToastVariant } from '@/shared/store/use-toast-store'
+import { useMobileSheetDrag } from '@/shared/ui/use-mobile-sheet-drag'
 
 interface ShareContextInfo {
   label: string
@@ -66,6 +67,7 @@ export function MobileTrackActionSheet({
   const jamendoTrackUrl = getJamendoTrackUrl(trackUrl)
   const hasNativeShare = canUseNativeShare()
   const close = () => onOpenChange(false)
+  const { surfaceRef, dragHandleProps } = useMobileSheetDrag(close)
 
   const showFeedback = (message: string, variant: ToastVariant = 'success') => {
     if (feedback) {
@@ -143,14 +145,15 @@ export function MobileTrackActionSheet({
           />
 
           <div
+            ref={surfaceRef}
             className="mobile-sheet-enter mobile-sheet-surface fixed inset-x-0 bottom-0 z-[119] max-h-[88dvh] overflow-y-auto rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(22,18,29,0.99),rgba(10,8,16,1))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-16px_42px_rgba(0,0,0,0.38)] lg:hidden"
             onClick={(event) => event.stopPropagation()}
           >
             <button
               type="button"
-              className="mx-auto mb-3 block h-1.5 w-14 rounded-full bg-white/18"
-              onClick={close}
-              aria-label="Close track actions"
+              className="mx-auto mb-3 block h-1.5 w-14 touch-none rounded-full bg-white/18"
+              {...dragHandleProps}
+              aria-label="Drag down to close track actions"
             />
 
             <div className="mb-3 flex min-w-0 items-center gap-3">

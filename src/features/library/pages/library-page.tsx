@@ -42,6 +42,7 @@ import { ShareLinkDialog } from '@/shared/ui/share-link-dialog'
 import { TrackGridSkeleton } from '@/features/discover/components/track-grid-skeleton'
 import { StatusPanel } from '@/shared/ui/status-panel'
 import { CompactTrackCard } from '@/entities/track/ui/compact-track-card'
+import { useMobileSheetDrag } from '@/shared/ui/use-mobile-sheet-drag'
 
 type SortOption = 'recently-played' | 'recently-added' | 'title' | 'artist'
 type MobileLibraryCategory = 'all' | 'songs' | 'artists' | 'playlists'
@@ -135,6 +136,9 @@ export function LibraryPage() {
   const [shareDialogTarget, setShareDialogTarget] = useState<null | 'liked' | 'playlist'>(null)
   const [shareSavedCollectionTarget, setShareSavedCollectionTarget] = useState<SavedCollection | null>(null)
   const [shareArtistTarget, setShareArtistTarget] = useState<SavedArtistEntry | null>(null)
+  const mobileSortSheetDrag = useMobileSheetDrag(() => setIsMobileSortSheetOpen(false))
+  const mobileItemSheetDrag = useMobileSheetDrag(() => setMobileItemMenuTarget(null))
+  const mobileDetailSheetDrag = useMobileSheetDrag(() => setDetailMoreMenu(null))
   const [isAddCollectionToPlaylistOpen, setIsAddCollectionToPlaylistOpen] = useState(false)
   const [collectionTracksForDialog, setCollectionTracksForDialog] = useState<Track[]>([])
   const [collectionTitleForDialog, setCollectionTitleForDialog] = useState('Playlist')
@@ -1537,7 +1541,13 @@ export function LibraryPage() {
         'group/library-card track-card-surface relative w-full text-left transition-colors active:bg-white/8',
         mode === 'grid' ? 'rounded-[1.35rem] p-2.5' : 'flex items-center gap-3 rounded-[1.25rem] px-3 py-3',
       )}
-      onClick={openLikedSongs}
+      onClick={(event) => {
+        if ((event.target as HTMLElement).closest('[data-library-card-action="true"]')) {
+          return
+        }
+
+        openLikedSongs()
+      }}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
@@ -1564,7 +1574,11 @@ export function LibraryPage() {
       {mode === 'list' ? (
         <button
           type="button"
+          data-library-card-action="true"
+          data-ignore-long-press="true"
           className="inline-flex size-9 items-center justify-center rounded-full border border-white/10 text-text-muted transition-colors active:bg-white/8 active:text-text-primary lg:hidden"
+          onPointerDown={(event) => event.stopPropagation()}
+          onPointerUp={(event) => event.stopPropagation()}
           onClick={(event) => {
             event.preventDefault()
             event.stopPropagation()
@@ -2070,7 +2084,7 @@ export function LibraryPage() {
   }
 
   const renderDesktopCardMenu = (content: ReactNode) => (
-    <div className="absolute right-3 top-3 z-20 hidden group-hover/library-card:flex group-focus-within/library-card:flex">
+    <div className="absolute right-3 top-3 z-20 hidden lg:group-hover/library-card:flex lg:group-focus-within/library-card:flex">
       <div className="relative" data-library-card-menu-root>
         {content}
       </div>
@@ -2780,14 +2794,15 @@ export function LibraryPage() {
             aria-label="Close sort options"
           />
           <div
+            ref={mobileSortSheetDrag.surfaceRef}
             className="mobile-sheet-enter mobile-sheet-surface fixed inset-x-0 bottom-0 z-[119] max-h-[88dvh] overflow-y-auto rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(22,18,29,0.99),rgba(10,8,16,1))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-16px_42px_rgba(0,0,0,0.38)] lg:hidden"
             onClick={(event) => event.stopPropagation()}
           >
             <button
               type="button"
-              className="mx-auto mb-3 block h-1.5 w-14 rounded-full bg-white/18"
-              onClick={() => setIsMobileSortSheetOpen(false)}
-              aria-label="Close sort options"
+              className="mx-auto mb-3 block h-1.5 w-14 touch-none rounded-full bg-white/18"
+              {...mobileSortSheetDrag.dragHandleProps}
+              aria-label="Drag down to close sort options"
             />
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="font-heading text-[1.25rem] text-text-primary">Sort by</h2>
@@ -2828,14 +2843,15 @@ export function LibraryPage() {
             aria-label="Close more options"
           />
           <div
+            ref={mobileItemSheetDrag.surfaceRef}
             className="mobile-sheet-enter mobile-sheet-surface fixed inset-x-0 bottom-0 z-[119] max-h-[88dvh] overflow-y-auto rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(22,18,29,0.99),rgba(10,8,16,1))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-16px_42px_rgba(0,0,0,0.38)] lg:hidden"
             onClick={(event) => event.stopPropagation()}
           >
             <button
               type="button"
-              className="mx-auto mb-3 block h-1.5 w-14 rounded-full bg-white/18"
-              onClick={() => setMobileItemMenuTarget(null)}
-              aria-label="Close more options"
+              className="mx-auto mb-3 block h-1.5 w-14 touch-none rounded-full bg-white/18"
+              {...mobileItemSheetDrag.dragHandleProps}
+              aria-label="Drag down to close more options"
             />
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="min-w-0">
@@ -3136,14 +3152,15 @@ export function LibraryPage() {
             aria-label="Close more options"
           />
           <div
+            ref={mobileDetailSheetDrag.surfaceRef}
             className="mobile-sheet-enter mobile-sheet-surface fixed inset-x-0 bottom-0 z-[119] max-h-[88dvh] overflow-y-auto rounded-t-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(22,18,29,0.99),rgba(10,8,16,1))] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-16px_42px_rgba(0,0,0,0.38)] lg:hidden"
             onClick={(event) => event.stopPropagation()}
           >
             <button
               type="button"
-              className="mx-auto mb-3 block h-1.5 w-14 rounded-full bg-white/18"
-              onClick={() => setDetailMoreMenu(null)}
-              aria-label="Close more options"
+              className="mx-auto mb-3 block h-1.5 w-14 touch-none rounded-full bg-white/18"
+              {...mobileDetailSheetDrag.dragHandleProps}
+              aria-label="Drag down to close more options"
             />
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="font-heading text-[1.25rem] text-text-primary">More options</h2>
